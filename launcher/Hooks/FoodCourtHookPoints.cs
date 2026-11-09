@@ -49,11 +49,11 @@ internal static class FoodCourtHookPoints
         _previous = (FieldInfo)CodeShape.Single(tick.Where(writesSet), "write to the previous signal set").operand;
         _current = sets.Single(f => f != _previous);
 
-        // Starting an order is the one no-argument method calling tick(true).
-        var tickInfo = (MethodInfo)_tickMethod;
+        // Stopping is the one simulation method that clears both signal sets.
+        MethodInfo clear = typeof(HashSet<>).MakeGenericType(_current.FieldType.GetGenericArguments()[0]).GetMethod("Clear");
         _startOrder = CodeShape.SingleMethod(
-            _screen.GetMethods(CodeShape.AllDeclared).Where(m => !m.IsStatic && m.ReturnType == typeof(void) && m.GetParameters().Length == 0),
-            il => il.Zip(il.Skip(1), (a, b) => a.opcode == OpCodes.Ldc_I4_1 && b.Calls(tickInfo)).Any(hit => hit), "method starting an order");
+            sim.GetMethods(CodeShape.AllDeclared).Where(m => !m.IsStatic && m.ReturnType == typeof(void) && m.GetParameters().Length == 0),
+            il => il.Count(i => i.Calls(clear)) >= 2 && il.Count(i => i.opcode == OpCodes.Ldfld && sets.Contains(i.operand)) >= 2, "simulation stop method");
 
         Type signal = _current.FieldType.GetGenericArguments()[0];
         _signalModule = CodeShape.SingleField(signal, f => !f.IsStatic && f.FieldType == module, "module field on a signal");
@@ -155,14 +155,14 @@ internal static class FoodCourtHookPoints
 
     private static void TickFinalizer() => _tickDepth--;
 
-    // When an order ends, the game starts the next one from inside the same tick. This is the last
-    // chance to report the finished order's final tick, before its counter resets.
+    // When an order ends, the game clears the simulation from inside the same tick, either to start
+    // the next order or to finish. This is the last chance to report the final tick.
     private static void StartOrderPrefix(object __instance)
     {
-        if (_tickDepth == 0)
+        if (_tickDepth == 0 || _orderRestarted)
             return;
         _orderRestarted = true;
-        HookHost.Raise("FoodCourt.TickCompleted", () => Snapshot(_getSim.Invoke(__instance, null), ReadTick(__instance)));
+        HookHost.Raise("FoodCourt.TickCompleted", () => Snapshot(__instance, (int)_getTick.Invoke(__instance, null)));
     }
 
     private static int ReadTick(object screen) => (int)_getTick.Invoke(_getSim.Invoke(screen, null), null);
