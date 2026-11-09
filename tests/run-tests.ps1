@@ -110,7 +110,7 @@ function Test-Build([string]$gameDir) {
     Check ($log -match "Instant downloads: applied").Count "download patch applies"
     Check ($log -match "No download cooldown: applied").Count "cooldown patch applies"
     Check ($log -match "Loaded Hook Logger").Count "HookLogger passes its scope check"
-    Check (($log -match "Loaded Food Court Tools").Count -and -not ($log -match "simulation runner unavailable").Count) "FoodCourtTools finds its game code"
+    Check (($log -match "Loaded Food Court Tools").Count -and -not ($log -match "simulation runner unavailable|level export unavailable").Count) "FoodCourtTools finds its game code"
     if ($isSteam) {
         Check ($log -match "relaunch through Steam disabled").Count "Steam relaunch disabled"
         Check ($log -match "leaderboards blocked \(6 calls\)").Count "leaderboards blocked"

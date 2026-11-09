@@ -136,11 +136,13 @@ public sealed class FoodCourtHooks
 /// <summary>A copy of the simulation's state. Changing it has no effect on the game.</summary>
 public sealed class FoodCourtTick
 {
-    public FoodCourtTick(int tick, IReadOnlyList<string> modules, IReadOnlyList<FoodCourtSignal> signals, IReadOnlyList<FoodCourtProduct> products)
+    public FoodCourtTick(int tick, IReadOnlyList<string> modules, IReadOnlyList<FoodCourtSignal> signals,
+        IReadOnlyList<FoodCourtSignal> previousSignals, IReadOnlyList<FoodCourtProduct> products)
     {
         Tick = tick;
         Modules = modules;
         Signals = signals;
+        PreviousSignals = previousSignals;
         Products = products;
     }
 
@@ -151,6 +153,9 @@ public sealed class FoodCourtTick
 
     /// <summary>Every socket that is on this tick.</summary>
     public IReadOnlyList<FoodCourtSignal> Signals { get; }
+
+    /// <summary>Every socket that was on the tick before. On tick 1 this is the opening pulse from the scanner.</summary>
+    public IReadOnlyList<FoodCourtSignal> PreviousSignals { get; }
 
     public IReadOnlyList<FoodCourtProduct> Products { get; }
 }

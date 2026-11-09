@@ -19,13 +19,16 @@ public sealed class FoodCourtToolsMod : IMod
 
     private IModLog _log;
     private SimulationRunner _runner;
-    private string _requests, _results;
+    private LevelExporter _exporter;
+    private string _requests, _results, _levels;
     private int _frames, _lastTick;
+    private bool _waveforms;
     private List<List<FoodCourtTick>> _trace;
 
     public void OnLoad(ModContext context)
     {
         _log = context.Log;
+        _waveforms = context.Config.GetBool("Waveforms", true);
         try
         {
             _runner = new SimulationRunner(context.Game);
@@ -36,6 +39,16 @@ public sealed class FoodCourtToolsMod : IMod
             return;
         }
 
+        try
+        {
+            _exporter = new LevelExporter(context.Game);
+        }
+        catch (ShapeMismatchException e)
+        {
+            context.ReportProblem("level export unavailable: " + e.Message);
+        }
+
+        _levels = Path.Combine(context.Directory, "levels");
         _requests = Path.Combine(context.Directory, "requests");
         _results = Path.Combine(context.Directory, "results");
         Directory.CreateDirectory(_requests);
@@ -50,7 +63,13 @@ public sealed class FoodCourtToolsMod : IMod
         if (_trace == null)
             return;
         if (_trace.Count == 0 || tick.Tick <= _lastTick)
-            _trace.Add(new List<FoodCourtTick>());
+        {
+            // The scanner's opening pulse happens before tick 1, so it's added as tick 0.
+            _trace.Add(new List<FoodCourtTick>
+            {
+                new(0, tick.Modules, tick.PreviousSignals, new FoodCourtSignal[0], new FoodCourtProduct[0]),
+            });
+        }
         _trace[_trace.Count - 1].Add(tick);
         _lastTick = tick.Tick;
     }
@@ -59,6 +78,7 @@ public sealed class FoodCourtToolsMod : IMod
     {
         if (++_frames % PollFrames != 0)
             return;
+        ExportLevelsOnce();
         string request = Directory.GetFiles(_requests, "*.solution").OrderBy(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
         if (request == null)
             return;
@@ -77,9 +97,31 @@ public sealed class FoodCourtToolsMod : IMod
 
         string name = Path.GetFileNameWithoutExtension(request);
         string json = Process(name, bytes);
-        File.WriteAllText(Path.Combine(_results, name + ".json"), json, new UTF8Encoding(false));
+        // Written then renamed, so a result can never be read half-finished.
+        string result = Path.Combine(_results, name + ".json");
+        string partial = result + ".partial";
+        File.WriteAllText(partial, json, new UTF8Encoding(false));
+        File.Delete(result);
+        File.Move(partial, result);
         File.Delete(request);
         _log.Info("Ran " + name);
+    }
+
+    // Level data only exists once the game has started, after mods load.
+    private void ExportLevelsOnce()
+    {
+        if (_exporter == null)
+            return;
+        LevelExporter exporter = _exporter;
+        _exporter = null;
+        try
+        {
+            _log.Info($"Exported {exporter.ExportAll(_levels, _log)} level documents.");
+        }
+        catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is TargetInvocationException)
+        {
+            _log.Error("Level export failed: " + e);
+        }
     }
 
     private string Process(string name, byte[] bytes)
@@ -99,6 +141,11 @@ public sealed class FoodCourtToolsMod : IMod
         try
         {
             RunOutcome outcome = _runner.Run(bytes);
+            if (_waveforms)
+            {
+                for (int i = 0; i < _trace.Count; i++)
+                    File.WriteAllText(Path.Combine(_results, $"{name}.order{i + 1}.vcd"), Waveform.Format(_trace[i]), new UTF8Encoding(false));
+            }
             return ResultJson.Success(name, saved, outcome, _trace);
         }
         catch (TargetInvocationException e) when (e.InnerException != null)

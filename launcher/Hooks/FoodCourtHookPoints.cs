@@ -14,9 +14,11 @@ internal static class FoodCourtHookPoints
 {
     private static bool _resolved;
     private static Type _screen;
-    private static MethodBase _tickMethod;
+    private static MethodBase _tickMethod, _startOrder;
     private static MethodInfo _getSim, _getTick, _getPuzzle, _getModuleType;
-    private static FieldInfo _current, _modules, _products, _from, _to, _moduleKind, _signalModule, _signalSocket, _level, _x, _y;
+    private static FieldInfo _current, _previous, _modules, _products, _from, _to, _moduleKind, _signalModule, _signalSocket, _level, _x, _y;
+    private static int _tickDepth;
+    private static bool _orderRestarted;
 
     public static void Define()
     {
@@ -44,8 +46,14 @@ internal static class FoodCourtHookPoints
         Func<CodeInstruction, bool> writesSet = i => i.opcode == OpCodes.Stfld && sets.Contains(i.operand);
         _tickMethod = CodeShape.SingleMethod(CodeShape.DeclaredMethods(_screen), il => il.Any(writesSet), "PuzzleScreen tick method");
         List<CodeInstruction> tick = CodeShape.ReadIL(_tickMethod);
-        var previous = (FieldInfo)CodeShape.Single(tick.Where(writesSet), "write to the previous signal set").operand;
-        _current = sets.Single(f => f != previous);
+        _previous = (FieldInfo)CodeShape.Single(tick.Where(writesSet), "write to the previous signal set").operand;
+        _current = sets.Single(f => f != _previous);
+
+        // Starting an order is the one no-argument method calling tick(true).
+        var tickInfo = (MethodInfo)_tickMethod;
+        _startOrder = CodeShape.SingleMethod(
+            _screen.GetMethods(CodeShape.AllDeclared).Where(m => !m.IsStatic && m.ReturnType == typeof(void) && m.GetParameters().Length == 0),
+            il => il.Zip(il.Skip(1), (a, b) => a.opcode == OpCodes.Ldc_I4_1 && b.Calls(tickInfo)).Any(hit => hit), "method starting an order");
 
         Type signal = _current.FieldType.GetGenericArguments()[0];
         _signalModule = CodeShape.SingleField(signal, f => !f.IsStatic && f.FieldType == module, "module field on a signal");
@@ -140,7 +148,21 @@ internal static class FoodCourtHookPoints
         ResolveTick();
         HookHost.Harmony.Patch(_tickMethod,
             prefix: new HarmonyMethod(typeof(FoodCourtHookPoints), nameof(TickPrefix)),
-            postfix: new HarmonyMethod(typeof(FoodCourtHookPoints), nameof(TickPostfix)));
+            postfix: new HarmonyMethod(typeof(FoodCourtHookPoints), nameof(TickPostfix)),
+            finalizer: new HarmonyMethod(typeof(FoodCourtHookPoints), nameof(TickFinalizer)));
+        HookHost.Harmony.Patch(_startOrder, prefix: new HarmonyMethod(typeof(FoodCourtHookPoints), nameof(StartOrderPrefix)));
+    }
+
+    private static void TickFinalizer() => _tickDepth--;
+
+    // When an order ends, the game starts the next one from inside the same tick. This is the last
+    // chance to report the finished order's final tick, before its counter resets.
+    private static void StartOrderPrefix(object __instance)
+    {
+        if (_tickDepth == 0)
+            return;
+        _orderRestarted = true;
+        HookHost.Raise("FoodCourt.TickCompleted", () => Snapshot(_getSim.Invoke(__instance, null), ReadTick(__instance)));
     }
 
     private static int ReadTick(object screen) => (int)_getTick.Invoke(_getSim.Invoke(screen, null), null);
@@ -148,6 +170,9 @@ internal static class FoodCourtHookPoints
     private static void TickPrefix(object __instance, out int __state)
     {
         __state = -1;
+        if (_tickDepth == 0)
+            _orderRestarted = false;
+        _tickDepth++;
         try { __state = ReadTick(__instance); }
         catch (Exception e) { Log.Error("FoodCourt.TickCompleted: could not read the tick: " + e.Message); }
     }
@@ -157,6 +182,12 @@ internal static class FoodCourtHookPoints
     {
         if (__state < 0)
             return;
+        if (_tickDepth == 1 && _orderRestarted)
+        {
+            // Both this tick and the next order's first were already reported.
+            _orderRestarted = false;
+            return;
+        }
         HookHost.Raise("FoodCourt.TickCompleted", () =>
         {
             int tick = ReadTick(__instance);
@@ -175,12 +206,8 @@ internal static class FoodCourtHookPoints
             names[i] = _moduleKind.GetValue(_getModuleType.Invoke(modules[i], null)).ToString();
         }
 
-        var signals = new List<FoodCourtSignal>();
-        foreach (object signal in (IEnumerable)_current.GetValue(sim))
-        {
-            if (indexes.TryGetValue(_signalModule.GetValue(signal), out int index))
-                signals.Add(new FoodCourtSignal(index, (int)_signalSocket.GetValue(signal)));
-        }
+        List<FoodCourtSignal> signals = ReadSignals(_current.GetValue(sim), indexes);
+        List<FoodCourtSignal> previous = ReadSignals(_previous.GetValue(sim), indexes);
 
         var products = new List<FoodCourtProduct>();
         foreach (object product in (IEnumerable)_products.GetValue(sim))
@@ -188,6 +215,17 @@ internal static class FoodCourtHookPoints
             object from = _from.GetValue(product), to = _to.GetValue(product);
             products.Add(new FoodCourtProduct((int)_x.GetValue(from), (int)_y.GetValue(from), (int)_x.GetValue(to), (int)_y.GetValue(to)));
         }
-        return new FoodCourtTick(tick, names, signals, products);
+        return new FoodCourtTick(tick, names, signals, previous, products);
+    }
+
+    private static List<FoodCourtSignal> ReadSignals(object set, Dictionary<object, int> indexes)
+    {
+        var signals = new List<FoodCourtSignal>();
+        foreach (object signal in (IEnumerable)set)
+        {
+            if (indexes.TryGetValue(_signalModule.GetValue(signal), out int index))
+                signals.Add(new FoodCourtSignal(index, (int)_signalSocket.GetValue(signal)));
+        }
+        return signals;
     }
 }
