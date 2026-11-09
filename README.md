@@ -54,4 +54,4 @@ tests\run-tests.ps1
 
 Checks the loader against each installed copy of the game, using temporary copies of its exe.
 
-`tools\strtool` decodes the game's encrypted strings.
+`tools\strtool` decodes the game's encrypted strings. `tools\fctext` converts Food Court `.solution` files to and from text.
