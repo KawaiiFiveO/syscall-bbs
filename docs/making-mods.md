@@ -62,6 +62,8 @@ scope = foodcourt
 | `scope` | Required. See below |
 | `name`, `version` | Optional |
 | `dll` | Optional. Needed if the folder has several DLLs and none matches the folder name |
+| `requires` | Optional. Comma-separated mod ids that must load first, or this mod fails |
+| `after` | Optional. Comma-separated mod ids to load after, if they're installed |
 
 ## Scopes and hooks
 
@@ -91,6 +93,10 @@ var target = CodeShape.SingleMethod(CodeShape.DeclaredMethods(window), il => /* 
 ```
 
 See `mods\SkipLoading` for real patches.
+
+## Replacing game files
+
+Files in `mods\<Name>\Content\...` replace the game's `Content\...` while modded. The game folder isn't changed. The mod needs `scope = content` or `full`, and a mod with only `content` needs no DLL. New files can't be added, only existing ones replaced. If two mods replace a file, the later one wins.
 
 ## Settings and logging
 

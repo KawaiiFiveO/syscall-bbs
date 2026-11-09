@@ -37,6 +37,15 @@ $cases = @(
     @{ Name = "dll_escape"; Source = "clean"; Scope = "game"; Expect = "file name inside"; Dll = "..\x.dll" }
     @{ Name = "bad_id"; Source = "clean"; Scope = "game"; Expect = "needs an id"; Id = "Bad Id!" }
     @{ Name = "no_manifest"; Source = "clean"; Expect = "missing mod.ini"; NoManifest = $true }
+    @{ Name = "aa_requires_later"; Source = "clean"; Scope = "game"; Expect = "loaded"; ManifestExtra = "requires = test.zz_required" }
+    @{ Name = "ab_after_later"; Source = "clean"; Scope = "game"; Expect = "loaded"; ManifestExtra = "after = test.zz_required, test.not_installed" }
+    @{ Name = "zz_required"; Source = "clean"; Scope = "game"; Expect = "loaded" }
+    @{ Name = "missing_requirement"; Source = "clean"; Scope = "game"; Expect = 'requires "test.not_installed"'; ManifestExtra = "requires = test.not_installed" }
+    @{ Name = "failed_requirement"; Source = "clean"; Scope = "game"; Expect = 'requires "test.throws_on_load"'; ManifestExtra = "requires = test.throws_on_load" }
+    @{ Name = "cycle_a"; Source = "clean"; Scope = "game"; Expect = "depends on itself"; ManifestExtra = "after = test.cycle_b" }
+    @{ Name = "cycle_b"; Source = "clean"; Scope = "game"; Expect = "depends on itself"; ManifestExtra = "requires = test.cycle_a" }
+    @{ Name = "content_only"; Scope = "content"; Expect = "loaded"; NoDll = $true; Content = $true }
+    @{ Name = "content_no_scope"; Source = "clean"; Scope = "game"; Expect = "needs scope = content"; Content = $true }
     @{ Name = "zz_check"; Scope = "full"; Expect = "loaded" }
     @{ Name = "zz_dup_id"; Source = "clean"; Scope = "game"; Expect = "already uses"; Id = "test.ok_foodcourt" }
 )
@@ -68,11 +77,19 @@ function Add-Mod($case, [string]$modsDir, [string]$sandbox, [string]$helperDll) 
     if ($case.UsesHelper) { $extraRef = $helperDll; $extraName = "helper" }
     if ($case.UsesUnshipped) { $extraRef = Build-Case "helper_unshipped"; $extraName = "helper_unshipped" }
     if ($case.UsesGame) { $extraRef = Join-Path $sandbox "Last Call BBS.exe"; $extraName = "Milwaukee" }
-    $built = Build-Case $source $extraRef $extraName
-
     $dir = Join-Path $modsDir $case.Name
     New-Item -ItemType Directory -Force $dir | Out-Null
-    Copy-Item $built (Join-Path $dir "$($case.Name).dll")
+    if (-not $case.NoDll) {
+        $built = Build-Case $source $extraRef $extraName
+        Copy-Item $built (Join-Path $dir "$($case.Name).dll")
+    }
+    if ($case.Content) {
+        foreach ($file in @("emails\test.txt", "sounds\fx\test.ogg", "textures\test.png")) {
+            $path = Join-Path $dir "Content\$file"
+            New-Item -ItemType Directory -Force (Split-Path $path) | Out-Null
+            Set-Content $path "overlay $($case.Name)" -Encoding Ascii
+        }
+    }
     if ($case.ShipHelper) { Copy-Item $helperDll $dir }
     if ($case.ShipBadHelper) { Copy-Item (Build-Case "uses_harmony") $dir }
     if ($case.Config) { Set-Content (Join-Path $dir "config.ini") $case.Config -Encoding Ascii }
@@ -154,6 +171,14 @@ function Test-Build([string]$gameDir) {
     Check ($log -match "\[test\.with_dep\] helper ok").Count "mod finds its own dependency"
     Check ($log -match "full_access has full access").Count "full-access mod is flagged"
     Check ($log -match "Loaded Food Court Stats").Count "example mod passes its scope check"
+    $loadedAt = { param($id) ($log | Select-String -Pattern "\] Loaded .*\(test\.$id\)" | Select-Object -First 1).LineNumber }
+    Check ((& $loadedAt "zz_required") -lt (& $loadedAt "aa_requires_later")) "a required mod loads first"
+    Check ((& $loadedAt "zz_required") -lt (& $loadedAt "ab_after_later")) "an 'after' mod loads later"
+    Check ($log -match "Content overlay: 3 file\(s\) replaced").Count "content overlay counts only the loaded mod's files"
+    Check ($log -match "Content overlay: file redirect applied").Count "file redirect applies"
+    Check ($log -match "Content overlay: sound redirect applied").Count "sound redirect applies"
+    Check ($log -match "Content overlay: image redirect applied").Count "image redirect applies"
+    Check ($log -match "Content overlay: redirect verified").Count "replaced file is what the game would read"
     $owners = $log -match "\[test\.zz_check\] patch owners:"
     Check ($owners.Count -and $owners[0] -notmatch "partial_patch") "failed mod's patches are removed"
     Check ($owners.Count -and $owners[0] -match "mod\.onehalf\.skiploading") "working mods' patches remain"

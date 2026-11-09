@@ -11,7 +11,9 @@ internal static class ModScopes
 {
     public const string Full = "full";
 
-    public static readonly ISet<string> Known = new HashSet<string> { Full, "game", "terminal", "desktop", "story", "foodcourt" };
+    public const string Content = "content";
+
+    public static readonly ISet<string> Known = new HashSet<string> { Full, Content, "game", "terminal", "desktop", "story", "foodcourt" };
 
     /// <summary>The scope a hook belongs to: "FoodCourt.TickCompleted" is in "foodcourt".</summary>
     public static string OfHook(string hook) => hook.Substring(0, hook.IndexOf('.')).ToLowerInvariant();

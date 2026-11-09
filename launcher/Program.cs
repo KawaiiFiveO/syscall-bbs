@@ -79,6 +79,7 @@ internal static class Program
         if (verifyOnly)
         {
             failures.AddRange(HookHost.VerifyAll());
+            failures.AddRange(ContentOverlay.Verify());
             Log.Info(failures.Count == 0 ? "Verify: all mods and hooks are working." : "Verify: some mods or hooks failed.");
             Log.Close();
             return failures.Count == 0 ? 0 : 2;

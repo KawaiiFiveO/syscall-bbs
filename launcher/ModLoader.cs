@@ -32,22 +32,79 @@ internal static class ModLoader
         Folders.AddRange(Directory.GetDirectories(modsDir).OrderBy(d => d, StringComparer.OrdinalIgnoreCase));
         Log.Info($"Found {Folders.Count} mod folder(s) in {modsDir}.");
 
+        var loaded = new HashSet<string>();
+        foreach (Entry entry in Sort(ReadManifests(failures), failures))
+        {
+            try
+            {
+                Load(entry, game, settings, loaded, failures);
+                loaded.Add(entry.Id);
+                if (ContentOverlay.HasContent(entry.Folder))
+                    ContentOverlay.Add(entry.Id, entry.Folder);
+            }
+            catch (Exception e)
+            {
+                Fail(entry.Label, e, failures);
+            }
+        }
+        failures.AddRange(ContentOverlay.Apply(game));
+        return failures;
+    }
+
+    private static void Fail(string label, Exception e, List<string> failures)
+    {
+        Exception cause = Unwrap(e);
+        Log.Error($"{label}: failed to load: {Describe(cause)}");
+        failures.Add($"{label}: {cause.GetType().Name}: {cause.Message}");
+    }
+
+    private static List<Entry> ReadManifests(List<string> failures)
+    {
+        var entries = new List<Entry>();
         var ids = new HashSet<string>();
         foreach (string folder in Folders)
         {
             string label = Path.GetFileName(folder);
             try
             {
-                Load(folder, game, settings, ids, failures);
+                string manifestPath = Path.Combine(folder, ManifestName);
+                if (!File.Exists(manifestPath))
+                    throw new InvalidDataException($"missing {ManifestName}");
+                ModConfig manifest = ModConfig.Load(manifestPath);
+                string id = manifest.GetString("id");
+                if (!ValidId.IsMatch(id))
+                    throw new InvalidDataException($"{ManifestName} needs an id of lowercase letters, digits, '.', '_' or '-', got \"{id}\"");
+                if (!ids.Add(id))
+                    throw new InvalidDataException($"another mod already uses the id \"{id}\"");
+                entries.Add(new Entry(folder, label, id, manifest));
             }
             catch (Exception e)
             {
-                Exception cause = Unwrap(e);
-                Log.Error($"{label}: failed to load: {Describe(cause)}");
-                failures.Add($"{label}: {cause.GetType().Name}: {cause.Message}");
+                Fail(label, e, failures);
             }
         }
-        return failures;
+        return entries;
+    }
+
+    // Alphabetical by folder, except that a mod always comes after the mods it names.
+    private static List<Entry> Sort(List<Entry> entries, List<string> failures)
+    {
+        var present = new HashSet<string>(entries.Select(e => e.Id));
+        var placed = new HashSet<string>();
+        var sorted = new List<Entry>();
+        var waiting = new List<Entry>(entries);
+        while (waiting.Count > 0)
+        {
+            Entry next = waiting.FirstOrDefault(e => e.Requires.Concat(e.After).All(d => !present.Contains(d) || placed.Contains(d)));
+            if (next == null)
+                break;
+            waiting.Remove(next);
+            placed.Add(next.Id);
+            sorted.Add(next);
+        }
+        foreach (Entry entry in waiting)
+            Fail(entry.Label, new InvalidDataException("its load order depends on itself: " + string.Join(", ", waiting.Select(e => e.Id))), failures);
+        return sorted;
     }
 
     /// <summary>Finds an assembly in the requesting mod's folder, then in every other mod's.</summary>
@@ -67,27 +124,33 @@ internal static class ModLoader
         return null;
     }
 
-    private static void Load(string folder, Assembly game, Settings settings, HashSet<string> ids, List<string> failures)
+    private static void Load(Entry entry, Assembly game, Settings settings, HashSet<string> loaded, List<string> failures)
     {
-        string folderName = Path.GetFileName(folder);
-        string manifestPath = Path.Combine(folder, ManifestName);
-        if (!File.Exists(manifestPath))
-            throw new InvalidDataException($"missing {ManifestName}");
-
-        ModConfig manifest = ModConfig.Load(manifestPath);
-        string id = manifest.GetString("id");
-        if (!ValidId.IsMatch(id))
-            throw new InvalidDataException($"{ManifestName} needs an id of lowercase letters, digits, '.', '_' or '-', got \"{id}\"");
-        if (!ids.Add(id))
-            throw new InvalidDataException($"another mod already uses the id \"{id}\"");
+        string folder = entry.Folder, id = entry.Id;
+        ModConfig manifest = entry.Manifest;
+        foreach (string required in entry.Requires)
+        {
+            if (!loaded.Contains(required))
+                throw new InvalidDataException($"requires \"{required}\", which isn't installed or failed to load");
+        }
 
         string name = manifest.GetString("name", id);
         string version = manifest.GetString("version", "0.0.0");
         var log = new ModLog(id);
-        string dll = FindDll(folder, folderName, manifest.GetString("dll"));
 
         HashSet<string> scopes = ReadScopes(manifest);
         bool full = scopes.Contains(ModScopes.Full);
+        if (ContentOverlay.HasContent(folder) && !full && !scopes.Contains(ModScopes.Content))
+            throw new InvalidDataException($"has a Content folder, so it needs scope = content");
+
+        // A mod that only replaces game files has no code to run.
+        if (scopes.Count == 1 && scopes.Contains(ModScopes.Content) && Directory.GetFiles(folder, "*.dll").Length == 0)
+        {
+            Log.Info($"Loaded {name} {version} ({id}).");
+            return;
+        }
+
+        string dll = FindDll(folder, entry.Label, manifest.GetString("dll"));
         if (full)
             Log.Warn($"{name} has full access to the game (scope = full).");
         else
@@ -186,6 +249,29 @@ internal static class ModLoader
         e is TargetInvocationException && e.InnerException != null ? e.InnerException : e;
 
     private static string Describe(Exception e) => e.ToString();
+
+    private sealed class Entry
+    {
+        public Entry(string folder, string label, string id, ModConfig manifest)
+        {
+            Folder = folder;
+            Label = label;
+            Id = id;
+            Manifest = manifest;
+            Requires = List(manifest, "requires");
+            After = List(manifest, "after");
+        }
+
+        public string Folder { get; }
+        public string Label { get; }
+        public string Id { get; }
+        public ModConfig Manifest { get; }
+        public List<string> Requires { get; }
+        public List<string> After { get; }
+
+        private static List<string> List(ModConfig manifest, string key) =>
+            manifest.GetString(key).Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+    }
 
     private sealed class ModLog : IModLog
     {

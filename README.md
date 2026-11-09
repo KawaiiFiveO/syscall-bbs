@@ -4,7 +4,9 @@ Loads mods into [Last Call BBS](https://www.zachtronics.com/last-call-bbs/) on W
 
 ## Install
 
-Requires the .NET SDK and the .NET Framework 4.7.2 Developer Pack. Close the game, then run:
+Close the game, extract the release zip, and run `Install.cmd`.
+
+From source, which requires the .NET SDK and the .NET Framework 4.7.2 Developer Pack:
 
 ```powershell
 launcher\install.ps1
@@ -53,6 +55,6 @@ See [docs/making-mods.md](docs/making-mods.md) and [the example](mods/FoodCourtS
 tests\run-tests.ps1
 ```
 
-Checks the loader against each installed copy of the game, using temporary copies of its exe.
+Checks the loader against each installed copy of the game, using temporary copies of its exe. `launcher\package.ps1` builds the release zip in `dist\`.
 
 `tools\strtool` decodes the game's encrypted strings. `tools\fctext` converts Food Court `.solution` files to and from text.
