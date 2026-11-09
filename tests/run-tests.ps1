@@ -100,7 +100,7 @@ function Test-Build([string]$gameDir) {
     }
 
     # A clean install with only our own mods must pass outright.
-    & (Join-Path $repo "launcher\install.ps1") -GameDir $sandbox -WithHookLogger | Out-Null
+    & (Join-Path $repo "launcher\install.ps1") -GameDir $sandbox -WithHookLogger -WithFoodCourtTools | Out-Null
     $exe = Join-Path $sandbox "Last Call BBS (Modded).exe"
     $logPath = Join-Path $sandbox "LastCallBBS.Launcher.log"
     $log = Get-Content $logPath
@@ -110,6 +110,7 @@ function Test-Build([string]$gameDir) {
     Check ($log -match "Instant downloads: applied").Count "download patch applies"
     Check ($log -match "No download cooldown: applied").Count "cooldown patch applies"
     Check ($log -match "Loaded Hook Logger").Count "HookLogger passes its scope check"
+    Check (($log -match "Loaded Food Court Tools").Count -and -not ($log -match "simulation runner unavailable").Count) "FoodCourtTools finds its game code"
     if ($isSteam) {
         Check ($log -match "relaunch through Steam disabled").Count "Steam relaunch disabled"
         Check ($log -match "leaderboards blocked \(6 calls\)").Count "leaderboards blocked"

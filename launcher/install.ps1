@@ -4,7 +4,9 @@ param(
     # The folder containing the game. If omitted, it's found from the registry or asked for.
     [string]$GameDir = "",
     # Also installs HookLogger, which prints every hook as it fires.
-    [switch]$WithHookLogger
+    [switch]$WithHookLogger,
+    # Also installs FoodCourtTools, which runs Food Court solutions on demand.
+    [switch]$WithFoodCourtTools
 )
 $ErrorActionPreference = "Stop"
 
@@ -31,13 +33,16 @@ New-Item -ItemType Directory -Force $modDir | Out-Null
 Copy-Item (Join-Path $modSource "bin\Release\SkipLoading.dll") $modDir -Force
 Copy-Item (Join-Path $modSource "mod.ini") $modDir -Force
 
-if ($WithHookLogger) {
-    $source = Join-Path $PSScriptRoot "..\mods\HookLogger"
-    dotnet build "$source\HookLogger.csproj" -c Release
-    if ($LASTEXITCODE -ne 0) { throw "Build failed: HookLogger" }
-    $target = Join-Path $GameDir "mods\HookLogger"
+$optional = @()
+if ($WithHookLogger) { $optional += "HookLogger" }
+if ($WithFoodCourtTools) { $optional += "FoodCourtTools" }
+foreach ($name in $optional) {
+    $source = Join-Path $PSScriptRoot "..\mods\$name"
+    dotnet build "$source\$name.csproj" -c Release
+    if ($LASTEXITCODE -ne 0) { throw "Build failed: $name" }
+    $target = Join-Path $GameDir "mods\$name"
     New-Item -ItemType Directory -Force $target | Out-Null
-    Copy-Item (Join-Path $source "bin\Release\HookLogger.dll") $target -Force
+    Copy-Item (Join-Path $source "bin\Release\$name.dll") $target -Force
     Copy-Item (Join-Path $source "mod.ini") $target -Force
 }
 

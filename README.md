@@ -17,6 +17,7 @@ Start `Last Call BBS (Modded).exe` in the game folder. On Steam, Steam must be r
 | Option | Adds |
 |---|---|
 | `-WithHookLogger` | `HookLogger`, which prints every hook as it fires |
+| `-WithFoodCourtTools` | `FoodCourtTools`, which runs Food Court solutions on demand |
 
 ## Settings
 

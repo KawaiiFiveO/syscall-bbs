@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace LastCallBBS.FoodCourt;
 
@@ -9,19 +8,19 @@ public static class SolutionText
 {
     public static string Format(SolutionFile s)
     {
-        var text = new StringBuilder();
-        text.Append("level ").AppendLine(ModuleCatalog.LevelName(s.Level));
-        text.Append("name ").AppendLine(s.Name);
-        text.Append("version ").AppendLine(s.Version.ToString());
-        text.AppendLine(s.Solved ? $"solved ticks={s.Ticks} cost={s.Cost}" : "unsolved");
-        text.AppendLine();
-
+        var lines = new List<string>
+        {
+            "level " + ModuleCatalog.LevelName(s.Level),
+            "name " + s.Name,
+            "version " + s.Version,
+            s.Solved ? $"solved ticks={s.Ticks} cost={s.Cost}" : "unsolved",
+            "",
+        };
         for (int i = 0; i < s.Modules.Count; i++)
-            text.AppendLine(FormatModule(i, s.Modules[i]));
-        text.AppendLine();
-        foreach (SolutionWire wire in s.Wires)
-            text.AppendLine(FormatWire(s, wire));
-        return text.ToString();
+            lines.Add(FormatModule(i, s.Modules[i]));
+        lines.Add("");
+        lines.AddRange(s.Wires.Select(w => FormatWire(s, w)));
+        return string.Join("\n", lines) + "\n";
     }
 
     private static string FormatModule(int index, SolutionModule m)

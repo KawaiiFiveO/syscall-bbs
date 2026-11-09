@@ -11,6 +11,7 @@ internal static class Program
     private const string Usage =
         "Usage:\n" +
         "  fctext <file.solution or folder>...           print solutions as text\n" +
+        "  fctext <file.solution> -o <file.txt>          write one solution to a text file\n" +
         "  fctext --check <file.solution or folder>...   confirm files are fully understood\n" +
         "  fctext --import <text file> <new.solution>    write a new solution from text";
 
@@ -18,6 +19,9 @@ internal static class Program
     {
         if (args.Length > 0 && args[0] == "--import")
             return args.Length == 3 ? Import(args[1], args[2]) : Fail(Usage);
+
+        if (args.Length == 3 && args[1] == "-o")
+            return Export(args[0], args[2]);
 
         bool check = args.Contains("--check");
         List<string> files = args.Where(a => a != "--check").SelectMany(Expand).ToList();
@@ -53,6 +57,22 @@ internal static class Program
 
     private static IEnumerable<string> Expand(string path) =>
         Directory.Exists(path) ? Directory.GetFiles(path, "*.solution").OrderBy(f => f, StringComparer.OrdinalIgnoreCase) : new[] { path };
+
+    private static int Export(string solutionPath, string textPath)
+    {
+        try
+        {
+            string text = SolutionText.Format(SolutionFile.Read(File.ReadAllBytes(solutionPath)));
+            File.WriteAllText(textPath, text, new UTF8Encoding(false));
+            Console.WriteLine($"Wrote {textPath}");
+            return 0;
+        }
+        catch (Exception e) when (e is InvalidDataException || e is EndOfStreamException || e is IOException)
+        {
+            Console.Error.WriteLine($"{solutionPath}: {e.Message}");
+            return 1;
+        }
+    }
 
     private static int Import(string textPath, string outputPath)
     {

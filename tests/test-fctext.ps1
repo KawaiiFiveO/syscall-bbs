@@ -76,6 +76,12 @@ Check ($text -match "(?m)^unsolved$") "imports are always unsolved, whatever the
 Check ($text -match "m0\.START -> m3\.INPUT_A") "wires survive"
 Check ($text -match "values=1,-1") "values survive"
 
+$exported = Join-Path $root "exported.txt"
+& $fctext $good -o $exported | Out-Null
+$exportCode = $LASTEXITCODE
+$exportedBytes = [IO.File]::ReadAllBytes($exported)
+Check ($exportCode -eq 0 -and $exportedBytes -contains 10 -and $exportedBytes -notcontains 13) "-o writes LF line endings"
+
 $before = (Get-FileHash $good).Hash
 $result = Run-Import $valid $good
 Check ($result.Code -ne 0 -and (Get-FileHash $good).Hash -eq $before) "won't overwrite an existing file"
