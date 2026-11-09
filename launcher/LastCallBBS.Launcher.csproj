@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- The game is a .NET Framework 4.5.1 x64 assembly; we host it in-process on the same CLR. -->
+    <TargetFramework>net472</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>Last Call BBS (Modded)</AssemblyName>
+    <RootNamespace>LastCallBBS.Launcher</RootNamespace>
+    <!-- Same icon and manifest as the game (the manifest enables per-monitor DPI awareness). -->
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateSupportedRuntime>true</GenerateSupportedRuntime>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Lib.Harmony" Version="2.3.3" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\modapi\LastCallBBS.ModAPI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="LastCallBBS.Launcher.ini" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

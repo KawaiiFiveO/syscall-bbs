@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Builds one test mod from TestMods.cs. run-tests.ps1 passes Case, and sometimes ExtraRef. -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>$(Case)</AssemblyName>
+    <DefineConstants>$(DefineConstants);$(Case)</DefineConstants>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="TestMods.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="LastCallBBS.ModAPI">
+      <HintPath>..\launcher\bin\Release\LastCallBBS.ModAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>..\launcher\bin\Release\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(ExtraRefName)" Condition="'$(ExtraRef)' != ''">
+      <HintPath>$(ExtraRef)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>
