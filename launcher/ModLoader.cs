@@ -162,7 +162,8 @@ internal static class ModLoader
         Harmony harmony = full ? new Harmony("mod." + id) : null;
         var context = new ModContext(id, name, version, folder, log,
             ModConfig.Load(Path.Combine(folder, ConfigName), log.Warn), full ? game : null, harmony,
-            new ModHooks(new HookHost.Source(id, log, scopes)), scopes.ToList(),
+            new ModHooks(new HookHost.Source(id, log, scopes)), new ModTextures(folder, RuntimeTextures.Source, full),
+            new ModPrograms(DesktopPrograms.Host, id, log, full || scopes.Contains(ModScopes.Programs)), scopes.ToList(),
             problem =>
             {
                 log.Error(problem);

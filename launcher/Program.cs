@@ -80,6 +80,8 @@ internal static class Program
         {
             failures.AddRange(HookHost.VerifyAll());
             failures.AddRange(ContentOverlay.Verify());
+            failures.AddRange(RuntimeTextures.Verify());
+            failures.AddRange(DesktopPrograms.Verify());
             Log.Info(failures.Count == 0 ? "Verify: all mods and hooks are working." : "Verify: some mods or hooks failed.");
             Log.Close();
             return failures.Count == 0 ? 0 : 2;

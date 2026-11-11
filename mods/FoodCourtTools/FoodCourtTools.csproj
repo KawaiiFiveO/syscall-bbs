@@ -13,5 +13,7 @@
     <Compile Include="..\..\tools\fctext\ModuleCatalog.cs" Link="Format\ModuleCatalog.cs" />
     <Compile Include="..\..\tools\fctext\SolutionFile.cs" Link="Format\SolutionFile.cs" />
     <Compile Include="..\..\tools\fctext\SolutionText.cs" Link="Format\SolutionText.cs" />
+    <Compile Include="..\..\tools\fctext\SolutionValidator.cs" Link="Format\SolutionValidator.cs" />
+    <Compile Include="..\..\tools\fctext\PlacementChecker.cs" Link="Format\PlacementChecker.cs" />
   </ItemGroup>
 </Project>

@@ -19,6 +19,9 @@ $cases = @(
     @{ Name = "full_access"; Scope = "full"; Expect = "loaded" }
     @{ Name = "with_dep"; Scope = "game"; Expect = "loaded"; UsesHelper = $true; ShipHelper = $true; Dll = "with_dep.dll" }
     @{ Name = "report_problem"; Scope = "game"; Expect = "loaded" }
+    @{ Name = "textures"; Scope = "game"; Expect = "loaded"; Pngs = $true }
+    @{ Name = "programs"; Scope = "programs"; Expect = "loaded"; Pngs = $true }
+    @{ Name = "programs_scoped_out"; Scope = "game"; Expect = "Programs need scope = programs"; Pngs = $true }
     @{ Name = "throws_on_load"; Scope = "game"; Expect = "boom on load" }
     @{ Name = "partial_patch"; Scope = "full"; Expect = "failed after patching" }
     # Uses a DLL no test mod ships, because a mod can find dependencies in other mods' folders.
@@ -90,6 +93,13 @@ function Add-Mod($case, [string]$modsDir, [string]$sandbox, [string]$helperDll) 
             Set-Content $path "overlay $($case.Name)" -Encoding Ascii
         }
     }
+    if ($case.Pngs) {
+        Add-Type -AssemblyName System.Drawing
+        $bitmap = New-Object System.Drawing.Bitmap 3, 2
+        $bitmap.Save((Join-Path $dir "icon.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+        $bitmap.Dispose()
+        Set-Content (Join-Path $dir "fake.png") "not a png" -Encoding Ascii
+    }
     if ($case.ShipHelper) { Copy-Item $helperDll $dir }
     if ($case.ShipBadHelper) { Copy-Item (Build-Case "uses_harmony") $dir }
     if ($case.Config) { Set-Content (Join-Path $dir "config.ini") $case.Config -Encoding Ascii }
@@ -123,11 +133,13 @@ function Test-Build([string]$gameDir) {
     $log = Get-Content $logPath
     Check ($log -match "Verify: all mods and hooks are working").Count "clean install verifies"
     Check (($log -match "Hook .*: OK").Count -eq 8) "all 8 hooks attach"
+    Check ($log -match "Textures: OK").Count "texture loading finds its game code"
+    Check ($log -match "Programs: OK").Count "desktop programs find their game code"
     Check ($log -match "Loaded Skip Loading").Count "SkipLoading loads"
     Check ($log -match "Instant downloads: applied").Count "download patch applies"
     Check ($log -match "No download cooldown: applied").Count "cooldown patch applies"
     Check ($log -match "Loaded Hook Logger").Count "HookLogger passes its scope check"
-    Check (($log -match "Loaded Food Court Tools").Count -and -not ($log -match "simulation runner unavailable|level export unavailable").Count) "FoodCourtTools finds its game code"
+    Check (($log -match "Loaded Food Court Tools").Count -and -not ($log -match "simulation runner unavailable|level export unavailable|live editing unavailable").Count) "FoodCourtTools finds its game code"
     if ($isSteam) {
         Check ($log -match "relaunch through Steam disabled").Count "Steam relaunch disabled"
         Check ($log -match "leaderboards blocked \(6 calls\)").Count "leaderboards blocked"
@@ -142,13 +154,16 @@ function Test-Build([string]$gameDir) {
     $all = if ($isSteam) { $cases + $steamCases } else { $cases }
     foreach ($case in $all) { Add-Mod $case $modsDir $sandbox $helperDll }
 
-    # The example isn't installed by default, but must keep working.
-    $example = Join-Path $repo "mods\FoodCourtStats"
-    & dotnet build (Join-Path $example "FoodCourtStats.csproj") -c Release -v q | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "Could not build the example mod" }
-    $exampleDir = Join-Path $modsDir "FoodCourtStats"
-    New-Item -ItemType Directory -Force $exampleDir | Out-Null
-    Copy-Item (Join-Path $example "bin\Release\FoodCourtStats.dll"), (Join-Path $example "mod.ini") $exampleDir
+    # The examples aren't installed by default, but must keep working.
+    foreach ($name in @("FoodCourtStats", "Typewriter")) {
+        $example = Join-Path $repo "mods\$name"
+        & dotnet build (Join-Path $example "$name.csproj") -c Release -v q | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Could not build the example mod $name" }
+        $exampleDir = Join-Path $modsDir $name
+        New-Item -ItemType Directory -Force $exampleDir | Out-Null
+        Copy-Item (Join-Path $example "bin\Release\$name.dll") $exampleDir
+        Get-ChildItem $example -File | Where-Object { $_.Extension -in ".ini", ".png" } | Copy-Item -Destination $exampleDir
+    }
 
     $ini = Join-Path $sandbox "LastCallBBS.Launcher.ini"
     foreach ($case in $all | Where-Object { $_.Allow }) { Add-Content $ini "AllowUnscoped.test.$($case.Name) = true" -Encoding Ascii }
@@ -169,8 +184,17 @@ function Test-Build([string]$gameDir) {
     Check ($log -match "\[test\.report_problem\] one feature unavailable").Count "reported problem is logged"
     Check ($log -match "still running after the problem").Count "mod keeps running after reporting a problem"
     Check ($log -match "\[test\.with_dep\] helper ok").Count "mod finds its own dependency"
+    Check ($log -match "\[test\.textures\] icon 3x2, same object True").Count "PNG size is read and loads are shared"
+    foreach ($what in @("outside", "missing", "not png", "scoped game texture")) {
+        Check ($log -match "\[test\.textures\] ${what}: rejected").Count "texture load rejects: $what"
+    }
+    Check ($log -match "\[test\.programs\] screen \[        ab\|          \|line2     \|line3     \]").Count "text screen clips, writes and scrolls"
+    Check ($log -match "\[test\.programs\] oversized screen: rejected").Count "text screen rejects an oversized grid"
+    Check ($log -match 'Program "Test Program" added by test\.programs').Count "program is added"
+    Check ($log -match "\[test\.programs\] data folder before the game runs: rejected \(InvalidOperationException\)").Count "data folder needs the running game"
     Check ($log -match "full_access has full access").Count "full-access mod is flagged"
     Check ($log -match "Loaded Food Court Stats").Count "example mod passes its scope check"
+    Check ($log -match "Loaded Typewriter").Count "example program loads"
     $loadedAt = { param($id) ($log | Select-String -Pattern "\] Loaded .*\(test\.$id\)" | Select-Object -First 1).LineNumber }
     Check ((& $loadedAt "zz_required") -lt (& $loadedAt "aa_requires_later")) "a required mod loads first"
     Check ((& $loadedAt "zz_required") -lt (& $loadedAt "ab_after_later")) "an 'after' mod loads later"

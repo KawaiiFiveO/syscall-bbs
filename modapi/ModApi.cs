@@ -34,8 +34,10 @@ public sealed class ModContext
     private readonly Action<string> _reportProblem;
 
     public ModContext(string id, string name, string version, string directory, IModLog log, ModConfig config,
-        Assembly game, Harmony harmony, ModHooks hooks, IReadOnlyCollection<string> scopes, Action<string> reportProblem)
+        Assembly game, Harmony harmony, ModHooks hooks, ModTextures textures, ModPrograms programs, IReadOnlyCollection<string> scopes, Action<string> reportProblem)
     {
+        Textures = textures;
+        Programs = programs;
         Id = id;
         Name = name;
         Version = version;
@@ -72,6 +74,12 @@ public sealed class ModContext
 
     /// <summary>Named game events that keep working across game updates. Limited to the scopes in mod.ini.</summary>
     public ModHooks Hooks { get; }
+
+    /// <summary>PNG files from the mod's folder, loaded as game textures.</summary>
+    public ModTextures Textures { get; }
+
+    /// <summary>Text programs on the desktop. Needs scope = programs (or full).</summary>
+    public ModPrograms Programs { get; }
 
     /// <summary>
     /// Reports that part of the mod couldn't be applied, while the rest stays loaded. The problem

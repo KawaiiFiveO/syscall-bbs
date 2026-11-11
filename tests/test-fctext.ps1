@@ -105,6 +105,39 @@ foreach ($case in $bad) {
     Check ($result.Code -ne 0 -and $result.Error -match [regex]::Escape($case.Expect) -and -not (Test-Path $output)) "refuses: $($case.Name)"
 }
 
+# Placement. Each case replaces one line of a legal layout and must be reported.
+$placed = $valid.Replace("m3 MixerSimple rack=2,2", "m3 MixerSimple rack=2,2`nm4 Stacker rack=5,0 floor=2,1 rot=3`nm5 Conveyor rack=0,0 floor=2,2 rot=3`nm6 LiquidInputSingle rack=6,0 floor=3,2 rot=2 values=0")
+$placementCases = @(
+    @{ Name = "pump aimed at a stacker"; From = "floor=3,2 rot=2"; To = "floor=3,1 rot=2"; Expect = "can only aim" }
+    @{ Name = "pump aimed off the floor"; From = "floor=3,2 rot=2"; To = "floor=0,2 rot=2"; Expect = "aims off the floor" }
+    @{ Name = "output too far right"; From = "floor=2,0 rot=3"; To = "floor=5,0 rot=3"; Expect = "doesn't fit on the" }
+    @{ Name = "output on the wrong row"; From = "floor=2,0 rot=3"; To = "floor=2,1 rot=3"; Expect = "must be on row" }
+    @{ Name = "scanner on the wrong row"; From = "floor=2,6 rot=3"; To = "floor=2,5 rot=3"; Expect = "must be on row" }
+    @{ Name = "scanner rotated"; From = "floor=2,6 rot=3"; To = "floor=2,6 rot=1"; Expect = "can't use rot" }
+    @{ Name = "floor overlap"; From = "m5 Conveyor rack=0,0 floor=2,2"; To = "m5 Conveyor rack=0,0 floor=2,1"; Expect = "overlap on the floor" }
+    @{ Name = "second output tile overlap"; From = "m5 Conveyor rack=0,0 floor=2,2"; To = "m5 Conveyor rack=0,0 floor=3,0"; Expect = "overlap on the floor" }
+    @{ Name = "rack overlap with a wide part"; From = "m3 MixerSimple rack=2,2"; To = "m3 MixerSimple rack=1,2"; Expect = "overlap on the rack" }
+    @{ Name = "off the rack"; From = "m4 Stacker rack=5,0"; To = "m4 Stacker rack=11,0"; Expect = "doesn't fit on the" }
+)
+
+function Run-Placement([string]$text) {
+    $textFile = Join-Path $root "placement.txt"
+    [IO.File]::WriteAllText($textFile, $text)
+    $output = (& $fctext --check-placement $textFile) -join "`n"
+    return @{ Code = $LASTEXITCODE; Output = $output }
+}
+
+$result = Run-Placement $placed
+Check ($result.Code -eq 0) "legal layout passes placement"
+$result = Run-Placement ($placed.Replace("floor=3,2 rot=2", "floor=2,3 rot=3"))
+Check ($result.Code -eq 0) "pump aimed at a conveyor passes placement"
+foreach ($case in $placementCases) {
+    $changed = $placed.Replace($case.From, $case.To)
+    if ($changed -eq $placed) { throw "Test case didn't change the text: $($case.Name)" }
+    $result = Run-Placement $changed
+    Check ($result.Code -ne 0 -and $result.Output -match [regex]::Escape($case.Expect)) "placement: $($case.Name)"
+}
+
 Write-Host ""
 if ($failed -eq 0) { Write-Host "All checks passed." -ForegroundColor Green; exit 0 }
 Write-Host "$failed check(s) failed." -ForegroundColor Red

@@ -152,13 +152,13 @@ internal sealed class SimulationRunner
 
     private static bool IsMaybe(Type type) => type.IsGenericType && type.GetGenericTypeDefinition().Name == "Maybe`1";
 
-    private static bool IsMaybeOf(Type type, Type value) => IsMaybe(type) && type.GetGenericArguments()[0] == value;
+    internal static bool IsMaybeOf(Type type, Type value) => IsMaybe(type) && type.GetGenericArguments()[0] == value;
 
     private static bool HasRange(Type type) =>
         type.GetFields(CodeShape.AllDeclared).Any(f => !f.IsStatic && f.FieldType.Name == "Range2");
 
     // Maybe<T> has a method that calls an Action<T> if a value is present. Returns null if there's none.
-    private static Func<object, object> MaybeReader(Type maybe, Type value)
+    internal static Func<object, object> MaybeReader(Type maybe, Type value)
     {
         Type callback = typeof(Action<>).MakeGenericType(value);
         MethodInfo ifPresent = CodeShape.Single(

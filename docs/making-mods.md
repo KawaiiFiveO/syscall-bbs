@@ -1,116 +1,185 @@
-# Making mods
+# Making Mods
 
-A mod is a folder in `mods\` in the game folder:
+This guide is for developers wanting to create mods.
 
-```
-mods\MyMod\
-  MyMod.dll
-  mod.ini
-  config.ini    (optional)
-```
+## Project Setup
 
-## Project
+1.  Create a new C# Class Library project targeting **.NET Framework 4.7.2**, with `<LangVersion>latest</LangVersion>` (the sample below needs C# 10 or later).
+2.  Reference `LastCallBBS.ModAPI.dll` (available in the game folder or from the `modapi/` project).
+3.  Mods with `scope = full` also need `0Harmony`. If you build from source, the `modapi/` project provides it.
 
-```xml
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
-  </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="LastCallBBS.ModAPI">
-      <HintPath>PATH\TO\GAME\LastCallBBS.ModAPI.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="0Harmony">
-      <HintPath>PATH\TO\GAME\0Harmony.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
-</Project>
-```
+To ensure your mod is safe for `scoped` usage, ensure your project does not reference `0Harmony` or other protected libraries.
 
-## Code
+### Building
 
-Each mod has exactly one `IMod` class:
+Compile your project using MSBuild or Visual Studio. Place your DLL in its own `mods\<Name>\` folder in your game folder, next to a `mod.ini` that sets at least `id` and `scope`.
+
+## Implementing a Mod
+
+Your mod must implement the `IMod` interface in `LastCallBBS.ModAPI`.
 
 ```csharp
 using LastCallBBS.ModAPI;
 
+namespace MyMod;
+
 public sealed class MyMod : IMod
 {
+    private ModContext _context;
+
     public void OnLoad(ModContext context)
     {
-        context.Hooks.FoodCourt.PuzzleOpened.Subscribe(level => context.Log.Info("Opened " + level));
+        _context = context;
+        // Hook or logic here
     }
 }
 ```
 
-An exception from `OnLoad` disables the mod. `context.ReportProblem(message)` reports a partial failure and keeps it loaded.
+### Scoped Mods
 
-## mod.ini
+Scoped mods are restricted to specific game subsystems. To create a scoped mod, set the `scope` field in your `mod.ini`.
 
-```ini
-id = author.mymod
-name = My Mod
-version = 1.0.0
-scope = foodcourt
-```
+Common scopes:
+*   `game`
+*   `terminal`
+*   `desktop`
+*   `story`
+*   `foodcourt`
+*   `content`
+*   `programs`
 
-| Key | |
-|---|---|
-| `id` | Required. Lowercase letters, digits, `.`, `_`, `-` |
-| `scope` | Required. See below |
-| `name`, `version` | Optional |
-| `dll` | Optional. Needed if the folder has several DLLs and none matches the folder name |
-| `requires` | Optional. Comma-separated mod ids that must load first, or this mod fails |
-| `after` | Optional. Comma-separated mod ids to load after, if they're installed |
+A mod is blocked during loading if its DLL:
+*   References the game assembly directly.
+*   References `0Harmony`, `Mono.Cecil`, `Steamworks.NET`, or `MonoMod*`.
+*   Uses reflection (e.g., `System.Reflection`).
+*   Uses dynamic lookups (e.g., `System.Type.GetType`).
+*   Calls native code via P/Invoke.
 
-## Scopes and hooks
+**Exceptions**: Reflection types ending in `Attribute` and certain standard `MemberInfo` calls are allowed.
 
-`scope` is `full`, or a comma-separated list of the scopes a mod uses.
+### Hooks
 
-| Scope | Hook | Passes |
+Hooks allow you to react to game events. Hooks are categorized in `ModHooks`.
+
+| Category | Hooks | Data Type |
 |---|---|---|
-| `game` | `Game.Update` | |
-| `terminal` | `Terminal.DownloadStarted`, `DownloadCompleted` | program name |
-| | `Terminal.Connected` | |
-| `desktop` | `Desktop.WindowOpened` | window type name |
-| `story` | `Story.EntryUnlocked` | `StoryEntry` |
-| `foodcourt` | `FoodCourt.PuzzleOpened` | level name |
-| | `FoodCourt.TickCompleted` | `FoodCourtTick` |
+| `Game` | `Update` | (none) |
+| `Terminal` | `DownloadStarted` | `string` |
+| | `DownloadCompleted` | `string` |
+| | `Connected` | (none) |
+| `Desktop` | `WindowOpened` | `string` |
+| `Story` | `EntryUnlocked` | `StoryEntry` |
+| `FoodCourt` | `PuzzleOpened` | `string` |
+| | `TickCompleted` | `FoodCourtTick` |
 
-Handlers run on the game's main thread. A handler that throws 3 times is removed. Food Court data is a read-only copy, and tick numbers restart with each order.
+**Note**: If a game update changes a hook's signature, the subscription will throw a `ShapeMismatchException`, and the mod will fail to load.
 
-A scoped mod is blocked if any DLL in its folder references the game or Harmony, uses reflection, or calls native code.
+#### `StoryEntry`
+```csharp
+public sealed class StoryEntry {
+    public int Index { get; }
+    public string Title { get; }
+}
+```
 
-## Full access
+#### `FoodCourtTick`
+```csharp
+public sealed class FoodCourtTick {
+    public int Tick { get; }
+    public IReadOnlyList<string> Modules { get; }
+    public IReadOnlyList<FoodCourtSignal> Signals { get; }
+    public IReadOnlyList<FoodCourtSignal> PreviousSignals { get; }
+    public IReadOnlyList<FoodCourtProduct> Products { get; }
+}
+```
 
-`scope = full` adds `context.Game` and `context.Harmony`. Scrambled names change between game builds, so find patch targets with `CodeShape`, which requires exactly one match:
+### Mod Configuration
+
+Use `ModConfig` to read settings from a `config.ini` file.
 
 ```csharp
-var window = CodeShape.RequireType(context.Game, "Terminal.MainWindow");
-var target = CodeShape.SingleMethod(CodeShape.DeclaredMethods(window), il => /* match IL */ true, "what this is");
+var mySetting = _context.Config.GetBool("MySetting", true);
+var myInt = _context.Config.GetInt("MyCount", 10);
+var myString = _context.Config.GetString("MyName", "Default");
 ```
 
-See `mods\SkipLoading` for real patches.
+### Textures
 
-## Replacing game files
+`context.Textures.Load("icon.png")` returns a `ModTexture` with `Width` and `Height`.
 
-Files in `mods\<Name>\Content\...` replace the game's `Content\...` while modded. The game folder isn't changed. The mod needs `scope = content` or `full`, and a mod with only `content` needs no DLL. New files can't be added, only existing ones replaced. If two mods replace a file, the later one wins.
+* The path is relative to the mod's folder.
+* Throws if the file is missing, outside the mod's folder, or not a PNG.
+* Loading the same file twice returns the same object.
 
-## Settings and logging
+`GameTexture` (`scope = full`) is the game's `Texture` object, with premultiplied alpha.
+
+* Created on first read.
+* Read it only on the game's main thread after startup, for example in a hook handler. Not in `OnLoad`.
+
+### Desktop Programs
+
+A program is a text window opened from a desktop icon: a grid of characters with keyboard input. Needs `scope = programs` (or `full`). `mods/Typewriter` is a complete example.
 
 ```csharp
-bool verbose = context.Config.GetBool("Verbose");   // also GetInt, GetString
-context.Log.Info("message");                        // also Warn, Error
+public void OnLoad(ModContext context) =>
+    context.Programs.Add("Notes", context.Textures.Load("icon.png"), new NotesProgram());
 ```
 
-`Config` reads `config.ini` in the mod's folder.
+* The icon is drawn at its own size, centred over its label like the game's icons, which are about 64×80 and at most 100×100.
+* Icons fill a second column next to the game's, top to bottom, in load order.
+* One window per program. Double-clicking the icon of an open program doesn't open a second window.
 
-## Checking a mod
+`IDesktopProgram` members, all called on the game's main thread:
 
-```powershell
-& ".\Last Call BBS (Modded).exe" --verify
+| Member | When |
+|---|---|
+| `Title` | Every frame |
+| `Columns`, `Rows` | When the window opens. At most 106×34. |
+| `Opened(window)` | Window opened, with a blank screen |
+| `KeyPressed(window, key)` | Each key press or auto-repeat, top window only |
+| `Update(window, seconds)` | Every frame while shown, after that frame's keys. The screen is drawn after it. |
+| `Closed(window)` | Window closed |
+
+An exception from any member stops the program until its window is reopened. The window shows the error, and the details go to the log.
+
+`window.Screen` is a `TextScreen`:
+
+* `Put`, `Write` (one row, no wrapping), `Fill`, `Clear`, `Scroll(top, bottom, lines)`. Row 0 is the top. Writes outside the grid are clipped.
+* `Foreground` and `Background` are the colours for writes that don't name one. `Background` is also the window's background.
+* `CursorColumn`, `CursorRow`, `CursorVisible`: a blinking block cursor.
+* Colours are `TextColor.FromRgb(0xRRGGBB)`.
+* Cells are 9×15 pixels in the desktop font.
+
+`KeyPress` has `Key` (`Character` with `Char`, or `Enter`, `Backspace`, `Delete`, `Escape`, `Tab`, arrows, `Home`, `End`, `PageUp`, `PageDown`, `F1`–`F12`) and `Shift`, `Control`, `Alt`. Typed characters in a frame come before other keys.
+
+`window.DataDirectory` (or `context.Programs.DataDirectory`) is the mod's folder for saved files: `My Games\Last Call BBS\<user>\mods\<id>`. It's created on first use, and is available once the game is running, not in `OnLoad`.
+
+## Full Access and Code Shaping
+
+Mods with `scope = full` have access to all hooks and the `context.Game` and `context.Harmony` objects.
+
+### Patching via CodeShape
+
+To ensure patches remain compatible with game updates, use `CodeShape` instead of hard-coded obfuscated names. Patches should match **exactly one** location in the code.
+
+```csharp
+// Example: Patching a method in MainWindow
+_context.Harmony.Patch(
+    CodeShape.SingleMethod(
+        CodeShape.DeclaredMethods(mainWindowType), 
+        il => FindTarget(il).Any(), 
+        "description of match"
+    ),
+    transpiler: new HarmonyMethod(typeof(MyMod), nameof(MyTranspiler))
+);
 ```
 
-Run it in the game folder. It loads every mod and attaches every hook without starting the game, then writes `LastCallBBS.Launcher.log`. A non-zero exit code means something failed.
+## Replacing Assets
+
+Mods with `content` or `full` scope can replace assets in the `Content\` folder.
+*   **Note**: Most textures are packed `.tex` files. A `.tex` can be replaced as is, but there's no PNG-to-`.tex` converter. New images don't need one: see [Textures](#textures).
+
+## Troubleshooting
+
+*   **Mod fails to load**: Check the `LastCallBBS.Launcher.log` in the game folder.
+*   **Compilation**: Always compile your project outside of the game folders to avoid accidental modification of game assets.

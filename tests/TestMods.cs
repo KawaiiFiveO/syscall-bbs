@@ -64,6 +64,88 @@ public class Mod : IMod
 }
 #endif
 
+#if textures
+// The folder holds icon.png (3x2) and fake.png (not a PNG). The game texture itself needs the
+// renderer, which --verify doesn't start.
+public class Mod : IMod
+{
+    public void OnLoad(ModContext c)
+    {
+        ModTexture icon = c.Textures.Load("icon.png");
+        c.Log.Info($"icon {icon.Width}x{icon.Height}, same object {ReferenceEquals(icon, c.Textures.Load("./ICON.png"))}");
+        Expect(c, "outside", () => c.Textures.Load("../ok_config/icon.png"));
+        Expect(c, "missing", () => c.Textures.Load("nothing.png"));
+        Expect(c, "not png", () => c.Textures.Load("fake.png"));
+        Expect(c, "scoped game texture", () => _ = icon.GameTexture);
+    }
+
+    private static void Expect(ModContext c, string what, Action action)
+    {
+        try
+        {
+            action();
+            c.Log.Info($"{what}: not rejected");
+        }
+        catch (Exception e)
+        {
+            c.Log.Info($"{what}: rejected ({e.GetType().Name})");
+        }
+    }
+}
+#endif
+
+#if programs
+// The window itself needs the running game; --verify checks the grid, the registration and the scope.
+public class Mod : IMod
+{
+    public void OnLoad(ModContext c)
+    {
+        var s = new TextScreen(10, 4);
+        s.Write(8, 0, "abcd");
+        s.Write(0, 1, "line1");
+        s.Write(0, 2, "line2");
+        s.Write(0, 3, "line3");
+        s.Scroll(1, 4, 1);
+        s.Write(0, 3, "x");
+        s.Scroll(1, 4, -1);
+        c.Log.Info($"screen [{Row(s, 0)}|{Row(s, 1)}|{Row(s, 2)}|{Row(s, 3)}]");
+        Expect(c, "oversized screen", () => new TextScreen(TextScreen.MaxColumns + 1, 1));
+        c.Programs.Add("Test Program", c.Textures.Load("icon.png"), new Program());
+        Expect(c, "data folder before the game runs", () => _ = c.Programs.DataDirectory);
+    }
+
+    private static string Row(TextScreen s, int row) => new string(Enumerable.Range(0, s.Columns).Select(col => s.GetChar(col, row)).ToArray());
+
+    private static void Expect(ModContext c, string what, Action action)
+    {
+        try
+        {
+            action();
+            c.Log.Info($"{what}: not rejected");
+        }
+        catch (Exception e)
+        {
+            c.Log.Info($"{what}: rejected ({e.GetType().Name})");
+        }
+    }
+
+    private sealed class Program : IDesktopProgram
+    {
+        public string Title => "Test";
+        public int Columns => 10;
+        public int Rows => 4;
+        public void Opened(ProgramWindow window) { }
+        public void Update(ProgramWindow window, float seconds) { }
+        public void KeyPressed(ProgramWindow window, KeyPress key) { }
+        public void Closed(ProgramWindow window) { }
+    }
+}
+#endif
+
+#if programs_scoped_out
+public class Mod : IMod { public void OnLoad(ModContext c) => c.Programs.Add("X", c.Textures.Load("icon.png"), null); }
+#endif
+
 #if throws_on_load
 public class Mod : IMod { public void OnLoad(ModContext c) => throw new InvalidOperationException("boom on load"); }
 #endif

@@ -12,6 +12,7 @@ namespace LastCallBBS.Mods.FoodCourtTools;
 /// <summary>
 /// Runs solutions on demand. Put a .solution file in this mod's requests folder while the game is
 /// running, and a .json result appears in its results folder. The request is then deleted.
+/// A .solution file in the edits folder replaces the game's solution of the same file name instead.
 /// </summary>
 public sealed class FoodCourtToolsMod : IMod
 {
@@ -20,7 +21,9 @@ public sealed class FoodCourtToolsMod : IMod
     private IModLog _log;
     private SimulationRunner _runner;
     private LevelExporter _exporter;
-    private string _requests, _results, _levels;
+    private SolutionEditor _editor;
+    private string _requests, _results, _levels, _edits;
+    private bool _wroteFolder;
     private int _frames, _lastTick;
     private bool _waveforms;
     private List<List<FoodCourtTick>> _trace;
@@ -48,11 +51,22 @@ public sealed class FoodCourtToolsMod : IMod
             context.ReportProblem("level export unavailable: " + e.Message);
         }
 
+        try
+        {
+            _editor = new SolutionEditor(context.Game);
+        }
+        catch (ShapeMismatchException e)
+        {
+            context.ReportProblem("live editing unavailable: " + e.Message);
+        }
+
         _levels = Path.Combine(context.Directory, "levels");
+        _edits = Path.Combine(context.Directory, "edits");
         _requests = Path.Combine(context.Directory, "requests");
         _results = Path.Combine(context.Directory, "results");
         Directory.CreateDirectory(_requests);
         Directory.CreateDirectory(_results);
+        Directory.CreateDirectory(_edits);
         context.Hooks.FoodCourt.TickCompleted.Subscribe(OnTick);
         context.Hooks.Game.Update.Subscribe(Poll);
     }
@@ -79,6 +93,7 @@ public sealed class FoodCourtToolsMod : IMod
         if (++_frames % PollFrames != 0)
             return;
         ExportLevelsOnce();
+        ApplyEdits();
         string request = Directory.GetFiles(_requests, "*.solution").OrderBy(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
         if (request == null)
             return;
@@ -97,14 +112,67 @@ public sealed class FoodCourtToolsMod : IMod
 
         string name = Path.GetFileNameWithoutExtension(request);
         string json = Process(name, bytes);
-        // Written then renamed, so a result can never be read half-finished.
-        string result = Path.Combine(_results, name + ".json");
-        string partial = result + ".partial";
-        File.WriteAllText(partial, json, new UTF8Encoding(false));
-        File.Delete(result);
-        File.Move(partial, result);
+        WriteAtomically(Path.Combine(_results, name + ".json"), json);
         File.Delete(request);
         _log.Info("Ran " + name);
+    }
+
+    private void ApplyEdits()
+    {
+        if (_editor == null)
+            return;
+        if (!_wroteFolder)
+        {
+            // Tells tools/fcedit.ps1 where the game's solution files are.
+            WriteAtomically(Path.Combine(_edits, "solutions-folder.txt"), _editor.SolutionsFolder() + "\n");
+            _wroteFolder = true;
+        }
+
+        foreach (string edit in Directory.GetFiles(_edits, "*.solution").OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+        {
+            byte[] bytes;
+            try
+            {
+                bytes = File.ReadAllBytes(edit);
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+            if (bytes.Length == 0)
+                continue;
+
+            string target = Path.GetFileNameWithoutExtension(edit);
+            EditOutcome outcome;
+            try
+            {
+                outcome = _editor.Apply(target, bytes);
+            }
+            catch (TargetInvocationException e) when (e.InnerException != null)
+            {
+                _log.Error(e.InnerException.ToString());
+                outcome = EditOutcome.Rejected("the game threw " + e.InnerException.GetType().Name + ": " + e.InnerException.Message);
+            }
+
+            // A waiting edit stays in the folder until it can be applied. It's reported once per request.
+            string result = Path.Combine(_edits, target + ".json");
+            if (outcome.Status == "waiting" && File.Exists(result))
+                continue;
+            WriteAtomically(result, ResultJson.Edit(target, outcome));
+            if (outcome.Status == "waiting")
+                continue;
+            File.Delete(edit);
+            _log.Info(outcome.Status == "applied" ? $"Applied edit to {outcome.File}" : $"Rejected edit to {target}: {outcome.Message}");
+        }
+    }
+
+    // Written then renamed, so a reader never sees half a file.
+    private static void WriteAtomically(string path, string text)
+    {
+        string partial = path + ".partial";
+        File.WriteAllText(partial, text, new UTF8Encoding(false));
+        File.Delete(path);
+        File.Move(partial, path);
     }
 
     // Level data only exists once the game has started, after mods load.

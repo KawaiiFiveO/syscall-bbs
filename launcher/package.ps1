@@ -43,7 +43,7 @@ Copy-Item "$repo\tools\fcrun.ps1" (Join-Path $stage "tools")
 
 Copy-Item "$PSScriptRoot\install-release.ps1", "$PSScriptRoot\FindGame.ps1", "$repo\README.md" $stage
 New-Item -ItemType Directory -Force (Join-Path $stage "docs") | Out-Null
-Copy-Item "$repo\docs\making-mods.md" (Join-Path $stage "docs")
+Copy-Item "$repo\docs\making-mods.md", "$repo\docs\food-court-format.md", "$repo\docs\food-court-tools.md" (Join-Path $stage "docs")
 Set-Content (Join-Path $stage "Install.cmd") "@powershell -NoProfile -ExecutionPolicy Bypass -File `"%~dp0install-release.ps1`" %*`r`n@pause" -Encoding Ascii -NoNewline
 
 $harmonyLicense = Join-Path $env:USERPROFILE ".nuget\packages\lib.harmony\2.3.3\LICENSE"

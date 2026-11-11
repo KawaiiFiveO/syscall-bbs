@@ -13,12 +13,16 @@ internal static class Program
         "  fctext <file.solution or folder>...           print solutions as text\n" +
         "  fctext <file.solution> -o <file.txt>          write one solution to a text file\n" +
         "  fctext --check <file.solution or folder>...   confirm files are fully understood\n" +
-        "  fctext --import <text file> <new.solution>    write a new solution from text";
+        "  fctext --import <text file> <new.solution>    write a new solution from text\n" +
+        "  fctext --check-placement <solution, text file or folder>...   apply the game's placement rules";
 
     private static int Main(string[] args)
     {
         if (args.Length > 0 && args[0] == "--import")
             return args.Length == 3 ? Import(args[1], args[2]) : Fail(Usage);
+
+        if (args.Length > 0 && args[0] == "--check-placement")
+            return args.Length > 1 ? CheckPlacement(args.Skip(1).SelectMany(Expand).ToList()) : Fail(Usage);
 
         if (args.Length == 3 && args[1] == "-o")
             return Export(args[0], args[2]);
@@ -57,6 +61,32 @@ internal static class Program
 
     private static IEnumerable<string> Expand(string path) =>
         Directory.Exists(path) ? Directory.GetFiles(path, "*.solution").OrderBy(f => f, StringComparer.OrdinalIgnoreCase) : new[] { path };
+
+    private static int CheckPlacement(List<string> files)
+    {
+        int failures = 0;
+        foreach (string file in files)
+        {
+            string name = Path.GetFileName(file);
+            try
+            {
+                SolutionFile solution = file.EndsWith(".solution", StringComparison.OrdinalIgnoreCase)
+                    ? SolutionFile.Read(File.ReadAllBytes(file))
+                    : SolutionParser.Parse(File.ReadAllText(file, Encoding.UTF8));
+                List<string> problems = PlacementChecker.Check(solution);
+                Console.WriteLine($"{(problems.Count == 0 ? "ok  " : "FAIL")}  {name}");
+                foreach (string problem in problems)
+                    Console.WriteLine($"      {problem}");
+                failures += problems.Count == 0 ? 0 : 1;
+            }
+            catch (Exception e) when (e is InvalidDataException || e is EndOfStreamException || e is IOException || e is SolutionFormatException)
+            {
+                Console.Error.WriteLine($"{file}: {e.Message}");
+                failures++;
+            }
+        }
+        return failures == 0 ? 0 : 1;
+    }
 
     private static int Export(string solutionPath, string textPath)
     {

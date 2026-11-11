@@ -13,6 +13,10 @@ internal static class ResultJson
     public static string Failure(string name, string message) =>
         $"{{\"file\":{Text(name)},\"status\":\"failed\",\"error\":{Text(message)}}}\n";
 
+    public static string Edit(string target, EditOutcome outcome) =>
+        $"{{\"target\":{Text(target)},\"status\":{Text(outcome.Status)},\"message\":{Text(outcome.Message)}," +
+        $"\"file\":{Text(outcome.File)},\"open\":{(outcome.Open ? "true" : "false")}}}\n";
+
     public static string Success(string name, SolutionFile saved, RunOutcome outcome, List<List<FoodCourtTick>> trace)
     {
         bool finished = outcome.Status == "ok" && outcome.OrderTicks.Count > 0;
