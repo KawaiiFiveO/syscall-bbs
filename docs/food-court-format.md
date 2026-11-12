@@ -1,60 +1,72 @@
-# Food Court Solution Format
+# Food Court solution format
 
-This document describes the format of `.solution` files for 20th Century Food Court. These files define how a level is solved.
+20th Century Food Court stores each solution as a binary `.solution` file. `fctext` converts them to and from a text format.
 
-**Warning:** A malformed `.solution` file can prevent the game from starting. Always back up your solution files before editing them.
+**Warning:** The game reads every solution at startup. A malformed `.solution` file can stop the game from starting. Back up solution files before editing them.
 
-## Tooling
+## fctext
 
-The `fctext` tool can be used to convert between binary `.solution` files and text format.
+`fctext.exe` is at `tools\fctext\bin\Release\net472\fctext.exe` in the release zip and in a source build.
 
-*   **Read/Write:** `fctext <file.solution>` (prints text) or `fctext <file.solution> -o <file.txt>` (writes UTF-8 text).
-*   **Verify:** `fctext --check <file.solution>` verifies that rewriting a file reproduces identical bytes, it passes validation, a solved file's saved cost matches the catalogue, and it converts to text and back to the same solution.
-*   **Import:** `fctext --import <text file> <new.solution>` writes a new solution from text. Imports are always written as unsolved with a cost of 0.
-*   **Placement:** `fctext --check-placement <solution, text file or folder>...` applies the game's placement rules, which the simulator doesn't check: floor and rack fit, overlaps, required rows and rotations, and what a pump may aim at.
+| Command | Effect |
+|---|---|
+| `fctext <file.solution or folder>...` | Prints solutions as text. |
+| `fctext <file.solution> -o <file.txt>` | Writes one solution to a UTF-8 text file. |
+| `fctext --check <file.solution or folder>...` | Checks that each file is fully understood: rewriting it gives identical bytes, it passes validation, a solved file's saved cost matches the catalogue, and text conversion round-trips. |
+| `fctext --import <text file> <new.solution>` | Writes a new solution from text, after validation. The result is unsolved with a cost of 0. |
+| `fctext --check-placement <solution, text file or folder>...` | Applies the game's placement rules: floor and rack fit, overlaps, required rows and rotations, and what a pump may aim at. |
 
-The `fctext` executable can be found in the release zip at:
-`tools\fctext\bin\Release\net472\fctext.exe`
+## Binary layout
 
-## Binary Layout
+Little-endian. A `string` is an `int` byte length followed by UTF-8 bytes.
 
-Files are little-endian.
+| Field | Type |
+|---|---|
+| Format version | `int`, 1010 to 1013 |
+| Level id | `int` |
+| Name | `string` |
+| Solved | `bool` |
+| Ticks | `int` |
+| Cost | `int` |
+| Module count | `int` |
+| Modules | module records |
+| Wire count | `int` |
+| Wires | 4 `int`s each: module A, socket A, module B, socket B |
 
-| Field | Type | Description |
+### Module record
+
+| Field | Type |
+|---|---|
+| Type | `int` |
+| Removable | `bool`, false for fixed level parts |
+| Rack X, Y | 2 `int`s |
+| Floor X, Y | 2 `int`s |
+| Type-specific data | see below |
+| Rotation | `byte` |
+
+Type-specific data:
+
+| Type | Data |
+|---|---|
+| `CounterSmall` | 2 `int`s |
+| `CounterLarge` | 4 `int`s |
+| `Painter` | 2 `int`s |
+| `SolidInput*`, `LiquidInput*`, `FreezerInput*`, `ToppingInput*`, `EnroberInput` | 1 `int` |
+| `Sequencer` | 48 `bool`s: 12 rows of 4 channels |
+| `Animatronic` | 1 `bool` |
+| Others | none |
+
+Older versions have an extra `int` in some records:
+
+| Version | Types | Position |
 |---|---|---|
-| Format version | `int` | Current is 1013 (min 1010). |
-| Level ID | `int` | |
-| Name | `string` | UTF-8, preceded by its byte length as an `int`. |
-| Solved status | `bool` | |
-| Ticks | `int` | |
-| Cost | `int` | |
-| Module count | `int` | |
-| Modules | `record[]`| See below. |
-| Wire count | `int` | |
-| Wires | `record[]`| 4-int records (module A, socket A, module B, socket B). |
+| Before 1011 | `Sequencer`, `CounterSmall`, `CounterLarge` | Before the data |
+| Before 1012 | `Microwave`, `Grill`, `Fryer` | Before the data |
+| Before 1013 | `LiquidInput*` | After the data |
 
-### Module Record
+## Text format
 
-| Field | Type | Description |
-|---|---|---|
-| Type | `int` | |
-| Removable | `bool` | False for fixed level parts. |
-| Rack X, Y | `int` | |
-| Floor X, Y | `int` | |
-| Type-specific data | | |
-| Rotation | `byte` | |
-
-#### Type-specific data (Examples)
-*   `CounterSmall/Large`: 2 or 4 `int`s.
-*   `Sequencer`: 48 `bool`s.
-*   `Painter`: 2 `int`s.
-*   `Animatronic`: 1 `bool`.
-*   `SolidInput*`, `LiquidInput*`, `FreezerInput*`, `ToppingInput*`, `EnroberInput`: 1 `int`.
-*   Others: none.
-
-## Text Format
-
-A text solution file consists of header lines, followed by one line per module, and one line per wire, separated by blank lines.
+Header lines, then one line per module, then one line per wire. Blank lines and lines starting with `#` are ignored.
 
 ```text
 level WineBar
@@ -65,35 +77,48 @@ solved ticks=8 cost=61
 m0 PrimaryInputForWineBar fixed rack=0,2 floor=2,6 rot=3
 m11 CounterSmall rack=8,2 floor=0,0 values=1,-1
 m12 Sequencer rack=9,1 floor=0,0 grid=#.../.#../..../..../..../..../..../..../..../..../..../....
+
 m0.START -> m6.INPUT_A
 ```
 
-### Header Lines
-*   `level <name>`: Level name.
-*   `name <name>`: Solution name.
-*   `version <version>`: Format version (default 1013).
-*   `solved ticks=<n> cost=<n>`: Unsolved solutions use the `unsolved` keyword instead of `solved`.
+### Header
 
-### Module Lines
-`m<n> <type> [fixed] rack=<x>,<y> floor=<x>,<y> [rot=<n>] [values=<v1>,<v2>...] [grid=<pattern>] [flags=<digits>]`
+| Line | Value |
+|---|---|
+| `level <name>` | Level's internal name. |
+| `name <name>` | Solution name. |
+| `version <n>` | Format version. Defaults to 1013. |
+| `solved ticks=<n> cost=<n>` or `unsolved` | Solved state. |
 
-*   `m<n>`: Index of the module in the file.
-*   `fixed`: Present if the module is not removable.
-*   `rot`: Omitted if 0.
-*   `values`: Comma-separated integers.
-*   `grid`: For sequencers, a pattern using `#` (on) and `.` (off).
-*   `flags`: One `0` or `1` per flag, with no separators.
-*   Sockets can be named (e.g., `INPUT_A`) or referenced by index (e.g., `#1`).
+### Modules
 
-### Wire Lines
-`m<n>.<socket> -> m<n>.<socket>`
+```text
+m<n> <type> [fixed] rack=<x>,<y> floor=<x>,<y> [rot=<n>] [values=<v>,...] [grid=<rows>] [flags=<digits>]
+```
 
-The output module and socket should be listed first.
+| Field | Value |
+|---|---|
+| `m<n>` | Module index in the file. |
+| `fixed` | Not removable. |
+| `rot` | Rotation. Omitted when 0. |
+| `values` | The module's `int`s, comma-separated. |
+| `grid` | Sequencer rows separated by `/`, one character per channel: `#` on, `.` off. |
+| `flags` | The module's `bool`s, one `0` or `1` each, with no separators. |
 
-## Module Catalogue
+### Wires
 
-There are 80 known module types. The `ModuleCatalog.cs` file contains the definitions.
-*   **Note**: 52 of these types come from reading the game's code and haven't been exercised by real solution files; the other 28 have.
+```text
+m<n>.<socket> -> m<n>.<socket>
+```
 
-## Socket Naming
-Socket names are uppercase with other characters as `_`. Unlabelled sockets are named `IN1`, `IN2`, etc. The first socket on a scanner is always `START`.
+The output socket comes first. A socket is its name, such as `INPUT_A`, or `#` and its index, such as `#1`.
+
+## Sockets
+
+* Socket names are the game's labels in uppercase, with other characters replaced by `_`.
+* Unlabelled sockets are `IN1`, `IN2` and so on.
+* A scanner's first socket is `START`.
+
+## Module catalogue
+
+`tools\fctext\ModuleCatalog.cs` lists the 80 module types, generated from the game's module definitions. 28 of them have been checked against real solution files.

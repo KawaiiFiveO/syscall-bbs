@@ -3,7 +3,7 @@ param([string]$Version = "0.1.0")
 $ErrorActionPreference = "Stop"
 
 $repo = Split-Path $PSScriptRoot
-$name = "LastCallLDR-$Version"
+$name = "SysCallBBS-$Version"
 $dist = Join-Path $repo "dist"
 $stage = Join-Path $dist $name
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }

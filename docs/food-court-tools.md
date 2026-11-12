@@ -1,79 +1,91 @@
-# Food Court Tools
+# Food Court tools
 
-Food Court Tools is a set of utilities for analyzing and solving 20th Century Food Court levels. It requires the game to be running.
+`FoodCourtTools` is a mod that runs 20th Century Food Court solutions in the game on request and reports the result. It also applies solution edits to the running game.
 
-Install with `install.ps1 -WithFoodCourtTools`.
+## Installation
 
-## Running a Build
+Install with `Install.cmd -WithFoodCourtTools`, or `launcher\install.ps1 -WithFoodCourtTools` from source.
 
-The `fcrun.ps1` script submits a solution to the running game and returns the result.
+The game must be running through `Last Call BBS (Modded).exe` for every tool on this page.
+
+## Running a solution
 
 ```powershell
 tools\fcrun.ps1 <file.solution or text file> [-TimeoutSeconds 30]
 ```
 
-*   **Input**: A `.solution` file or a text file. Invalid text files exit with code 2.
-*   **Output**: The script prints `status ticks cost orders` and the path to the result.
-*   **Exit Codes**:
-    *   `0`: Success (`ok`).
-    *   `1`: Failure.
-    *   `2`: Invalid input file.
+* A text file is converted with `fctext --import` first. See [Food Court solution format](food-court-format.md).
+* Prints `status=… ticks=… cost=… orders=…`, then the path of the JSON result, then the waveform files if any.
 
-Results are stored in `results\<name>.json`. You can also place a `.solution` file in the `requests\` folder for automatic submission.
-
-### Result Fields
-
-Results are provided in JSON format.
-
-| Field | Description |
+| Exit code | Meaning |
 |---|---|
-| `file` | The name of the solution file. |
-| `level` | The level name. |
-| `name` | The solution name. |
-| `status` | `ok`, `error` (game error), `timeout`, or `failed`. |
-| `error` | Message from the game (null if `ok`). |
-| `ticks` | The slowest order's tick count less one (matches game score). Null unless `ok`. |
-| `cost` | Total cost from the catalogue. |
-| `orderTicks` | Each completed order's tick count. The score is the largest of these less one. |
-| `orders` | One array per order run, with one entry per tick. |
+| `0` | Status is `ok`. |
+| `1` | Any other status, a timeout or an error. |
+| `2` | The text file failed to import. |
 
-#### `orders` details
-Each tick entry contains:
-*   `tick`: The tick number, which restarts with each order.
-*   `signals`: The sockets that are on during that tick (e.g., `m3.INPUT_A`).
-*   `products`: Each product's move that tick (as `[fromX,fromY,toX,toY]`).
+Without `fcrun.ps1`: copy a `.solution` file into `mods\FoodCourtTools\requests\`. The result is written to `mods\FoodCourtTools\results\<name>.json`.
 
-## Editing a Solution as Text
+### Result
 
-`fcedit.ps1` opens a saved solution as text. Each time you save the file, it's checked, and if it's valid it replaces the solution in the running game.
+| Field | Value |
+|---|---|
+| `file` | Request file name. |
+| `level` | Level's internal name, such as `WineBar`. |
+| `name` | Solution name. |
+| `status` | `ok`, `error` (the game reported an error), `timeout` or `failed` (the run couldn't start). |
+| `error` | The game's message, or `null`. |
+| `ticks` | Score: the slowest order's tick count minus one. `null` unless `ok`. |
+| `cost` | Cost computed from the module catalogue. |
+| `savedSolved`, `savedTicks`, `savedCost` | Values stored in the solution file. |
+| `orderTicks` | Tick count of each completed order. |
+| `orders` | One array per order, with one entry per tick. |
+
+Each tick entry:
+
+| Field | Value |
+|---|---|
+| `tick` | Tick number. Restarts for each order. |
+| `signals` | Sockets that are on, such as `m3.INPUT_A`. |
+| `products` | Each product's move as `[fromX, fromY, toX, toY]`. |
+
+A `failed` result has only `file`, `status` and `error`.
+
+## Editing a solution as text
 
 ```powershell
-tools\fcedit.ps1 wine-oclock-2             # a solution's file name, or its .solution path
-tools\fcedit.ps1 my-build.txt              # a text file; makes a new solution if none has its name
-tools\fcedit.ps1 my-build.txt -Once        # check and apply once, then exit
+tools\fcedit.ps1 wine-oclock-2            # solution file name or .solution path
+tools\fcedit.ps1 my-build.txt             # text file
+tools\fcedit.ps1 my-build.txt -Once       # check and apply once, then exit
 ```
 
-*   Problems are printed with their line numbers, and nothing reaches the game.
-*   If the puzzle is open, the edit waits until the solution isn't running.
-*   Each edit is one undo step: **Ctrl+Z** in the game reverts it.
-*   `-Editor <command>` picks the editor. The default is `$env:EDITOR`, then VS Code, then Notepad.
+* A solution is exported to `mods\FoodCourtTools\text\` and opened in an editor. A text file is opened as is.
+* Each save is checked. Problems are printed with line numbers and nothing is applied. A valid file replaces the solution in the game.
+* If no solution has the text file's name, a new solution is created.
+* If the puzzle is running, the edit waits until it stops.
+* Each edit is one undo step. **Ctrl+Z** in the puzzle screen reverts it.
+* `-Editor <command>` sets the editor. The default is `$env:EDITOR`, then VS Code, then Notepad. `-NoEditor` opens none.
+* With `-Once`, exit code 0 means the edit was applied or is waiting for the puzzle screen.
 
-## Level Documents
+`fcedit.ps1` is only in the source repository.
 
-The tool automatically generates level requirement documents in `mods\FoodCourtTools\levels\<Level>.md`. These are rewritten on every game start.
+## Level documents
 
-**Note:** These documents describe the requirements (orders, blocks, etc.) for a level; they do not contain solutions.
+On every game start, each level's requirements are written to `mods\FoodCourtTools\levels\<Level>.md`. They do not contain solutions.
 
 ## Waveforms
 
-If `Waveforms` is enabled in `mods\FoodCourtTools\config.ini` (default), each order generates a VCD file for waveform analysis.
+Each order of a run is written as a VCD file, `results\<name>.order<N>.vcd`, viewable in GTKWave or another VCD viewer.
 
-*   **File**: `results\<name>.order<N>.vcd`
-*   **Viewing**: Use a tool like **GTKWave**.
-*   **Content**: Each module is represented as a scope, and each output socket is a 1-bit wire. Tick 0 includes the scanner's opening pulse from `PreviousSignals`.
+* Each module is a scope. Each output socket is a 1-bit wire.
+* Tick 0 holds the scanner's opening pulse.
 
-## Limits
+To turn waveforms off, create `mods\FoodCourtTools\config.ini` containing:
 
-*   The game must be running.
-*   The trace does not include the recipe state of products.
-*   The trace does not check if parts fit on the floor or rack.
+```ini
+Waveforms = false
+```
+
+## Limitations
+
+* Results don't include the recipe state of products.
+* Runs don't check whether parts fit on the floor or rack. Use `fctext --check-placement`.
