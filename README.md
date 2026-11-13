@@ -1,8 +1,10 @@
 # SysCall BBS
 
-SysCall BBS is a mod loader for Last Call BBS (Zachtronics) on Windows.
+SysCall BBS is a modloader for Last Call BBS (Zachtronics) on Windows.
 
 GOG and Steam builds are supported. SysCall does not modify game files.
+
+https://github.com/user-attachments/assets/56f08b51-0a20-489b-b9f9-bf7041386f72
 
 ## Requirements
 
@@ -28,7 +30,7 @@ Dropping a mod's folder on `Install.cmd` adds it to the list. Reinstalling keeps
 
 Run `Install.cmd` and choose Uninstall. SysCall will be removed; saves are kept.
 
-To uninstall by hand, delete these from the game folder:
+To uninstall manually, delete these from the game folder:
 
 ```
 Last Call BBS (Modded).exe
