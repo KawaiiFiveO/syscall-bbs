@@ -23,6 +23,7 @@ A class library targeting `net472`, C# 10 or later:
 * Mods with `scope = full` that patch the game also reference `0Harmony.dll`, with `Private="false"`.
 * Inside the source repository, use `<ProjectReference Include="..\..\modapi\LastCallBBS.ModAPI.csproj" Private="false" />` instead.
 * Build outside the game folder, then copy the DLL into `mods\<Name>\`.
+* User documentation goes in `mods\<Name>\README.md`, which ships with the mod. Formats and tools that work without the mod go in `docs\`.
 
 ## mod.ini
 

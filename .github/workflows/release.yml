@@ -1,0 +1,46 @@
+# Builds the release zip on a version tag (v0.1.0) and attaches it to a draft GitHub release.
+# Run by hand (Actions > Release > Run workflow) to build the zip as a workflow artifact only.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Version
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else echo "version=0.0.0-dev.${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Package
+        shell: powershell
+        run: .\launcher\package.ps1 -Version ${{ steps.version.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SysCallBBS-${{ steps.version.outputs.version }}
+          path: dist/SysCallBBS-${{ steps.version.outputs.version }}.zip
+
+      - name: Draft release
+        if: github.ref_type == 'tag'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "dist/SysCallBBS-${{ steps.version.outputs.version }}.zip" --draft --generate-notes --title "SysCall BBS ${{ steps.version.outputs.version }}"

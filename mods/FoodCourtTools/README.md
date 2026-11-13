@@ -1,12 +1,8 @@
-# Food Court tools
+# Food Court Tools
 
-`FoodCourtTools` is a mod that runs 20th Century Food Court solutions in the game on request and reports the result. It also applies solution edits to the running game.
+A mod that runs 20th Century Food Court solutions in the game on request and reports the result. It also applies solution edits to the running game.
 
-## Installation
-
-Install with `Install.cmd -WithFoodCourtTools`, or `launcher\install.ps1 -WithFoodCourtTools` from source.
-
-The game must be running through `Last Call BBS (Modded).exe` for every tool on this page.
+Pick Food Court Tools in `Install.cmd`. The game must be running through `Last Call BBS (Modded).exe` for every tool on this page. `fctext` and the solution text format are described in [Food Court solution format](../../docs/food-court-format.md).
 
 ## Running a solution
 
@@ -14,7 +10,7 @@ The game must be running through `Last Call BBS (Modded).exe` for every tool on 
 tools\fcrun.ps1 <file.solution or text file> [-TimeoutSeconds 30]
 ```
 
-* A text file is converted with `fctext --import` first. See [Food Court solution format](food-court-format.md).
+* A text file is converted with `fctext --import` first.
 * Prints `status=… ticks=… cost=… orders=…`, then the path of the JSON result, then the waveform files if any.
 
 | Exit code | Meaning |
@@ -63,7 +59,7 @@ tools\fcedit.ps1 my-build.fcn -Run        # also run each applied version and pr
 
 * A solution is exported to `mods\FoodCourtTools\text\` and opened in an editor. A text or netlist file is opened as is.
 * Each save is checked. Problems are printed with line numbers and nothing is applied. A valid file replaces the solution in the game.
-* A netlist (`.fcn`, see `specs/food-court-netlist.md`) is compiled on every save, and its cost report is printed: floor and logic cost, functions, buffers added and what the optimiser saved. `-Strict` and `-NoOptimise` pass `--strict` and `-O0` to the compiler.
+* A netlist (`.fcn`, see [Food Court netlist language](../../docs/food-court-netlist.md)) is compiled on every save, and its cost report is printed: floor and logic cost, functions, buffers added and what the optimiser saved. `-Strict` and `-NoOptimise` pass `--strict` and `-O0` to the compiler.
 * `-Run` runs each applied version in the game and prints its score, such as `Score: 10T 75k 37S 28W`. S is the sum over orders of each order's ticks minus one; W is the number of wires.
 * A change made in the game rewrites a text file that has no unapplied edits. A netlist is never rewritten, because that would lose its names: the game's version is written next to it as `<name>.game.fcn`.
 * If no solution has the text file's name, a new solution is created.

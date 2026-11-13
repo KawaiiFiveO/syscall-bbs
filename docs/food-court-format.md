@@ -14,6 +14,8 @@
 | `fctext <file.solution> -o <file.txt>` | Writes one solution to a UTF-8 text file. |
 | `fctext --check <file.solution or folder>...` | Checks that each file is fully understood: rewriting it gives identical bytes, it passes validation, a solved file's saved cost matches the catalogue, and text conversion round-trips. |
 | `fctext --import <text file> <new.solution>` | Writes a new solution from text, after validation. The result is unsolved with a cost of 0. |
+| `fctext --compile <file.fcn> <new.solution>` | Writes a new solution from a netlist. See [Food Court netlist language](food-court-netlist.md). |
+| `fctext --to-netlist <file.solution or text file> [-o <file.fcn>]` | Converts a solution to a netlist. |
 | `fctext --check-placement <solution, text file or folder>...` | Applies the game's placement rules: floor and rack fit, overlaps, required rows and rotations, and what a pump may aim at. |
 
 ## Binary layout

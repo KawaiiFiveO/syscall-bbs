@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using LastCallBBS.ModAPI;
+using Yomiel;
 
 namespace LastCallBBS.Mods.YomielPlayer;
 
@@ -49,10 +50,8 @@ internal sealed class StoryFile
     public long Size;
     public string DataFolder;
 
-    public bool Supported => Version == 5 || Version == 7 || Version == 8;
-    public string SuspendedState => System.IO.Path.Combine(DataFolder, "suspended.qzl");
-    public string SuspendedScreen => System.IO.Path.Combine(DataFolder, "suspended.screen");
-    public bool CanContinue => File.Exists(SuspendedState);
+    public bool Supported => ZMachine.IsSupportedVersion(Version);
+    public bool CanContinue => new ZStoryFolder(DataFolder).HasSuspended;
 
     public static List<StoryFile> Find(string folder, string dataRoot)
     {
@@ -79,17 +78,9 @@ internal sealed class StoryFile
                 Name = name,
                 Version = version,
                 Size = new FileInfo(path).Length,
-                DataFolder = System.IO.Path.Combine(dataRoot, SafeName(System.IO.Path.GetFileName(path))),
+                DataFolder = System.IO.Path.Combine(dataRoot, ZStoryFolder.SafeName(System.IO.Path.GetFileName(path))),
             });
         }
         return stories;
-    }
-
-    /// <summary>A file name made only of letters, digits, spaces, dots, dashes and underscores.</summary>
-    public static string SafeName(string name)
-    {
-        var chars = name.Where(c => char.IsLetterOrDigit(c) || c == ' ' || c == '-' || c == '_' || c == '.').ToArray();
-        string safe = new string(chars).Trim().Trim('.');
-        return safe.Length == 0 ? "save" : safe.Length > 60 ? safe.Substring(0, 60) : safe;
     }
 }

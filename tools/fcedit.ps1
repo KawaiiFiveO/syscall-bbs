@@ -29,7 +29,7 @@ $ErrorActionPreference = "Stop"
 $process = Get-Process -Name "Last Call BBS (Modded)" -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $process) { throw "The game isn't running through the mod loader." }
 $mod = Join-Path (Split-Path $process.Path) "mods\FoodCourtTools"
-if (-not (Test-Path $mod)) { throw "FoodCourtTools isn't installed. Use install.ps1 -WithFoodCourtTools." }
+if (-not (Test-Path $mod)) { throw "FoodCourtTools isn't installed. Install it with Install.cmd or install.ps1." }
 $edits = Join-Path $mod "edits"
 $folderFile = Join-Path $edits "solutions-folder.txt"
 if (-not (Test-Path $folderFile)) { throw "FoodCourtTools hasn't started live editing yet. Wait for the game to finish loading, or check its log." }

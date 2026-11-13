@@ -127,7 +127,7 @@ function Test-Build([string]$gameDir) {
     }
 
     # A clean install with only our own mods must pass outright.
-    & (Join-Path $repo "launcher\install.ps1") -GameDir $sandbox -WithHookLogger -WithFoodCourtTools | Out-Null
+    & (Join-Path $repo "launcher\install.ps1") -GameDir $sandbox -Mods SkipLoading,HookLogger,FoodCourtTools | Out-Null
     $exe = Join-Path $sandbox "Last Call BBS (Modded).exe"
     $logPath = Join-Path $sandbox "LastCallBBS.Launcher.log"
     $log = Get-Content $logPath

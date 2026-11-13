@@ -3,6 +3,9 @@ param([string]$Version = "0.1.0")
 $ErrorActionPreference = "Stop"
 
 $repo = Split-Path $PSScriptRoot
+if (-not (Test-Path (Join-Path $repo "yomiel\Yomiel\Yomiel.csproj"))) {
+    throw "The yomiel submodule isn't checked out. Run: git submodule update --init"
+}
 $name = "SysCallBBS-$Version"
 $dist = Join-Path $repo "dist"
 $stage = Join-Path $dist $name
@@ -18,10 +21,10 @@ function Add-Mod([string]$mod, [string]$folder) {
     Build "$source\$mod.csproj"
     $target = Join-Path $stage "$folder\$mod"
     New-Item -ItemType Directory -Force $target | Out-Null
-    # The mod's DLLs, without the ones the launcher ships, plus its ini files and icons.
+    # The mod's DLLs, without the ones the launcher ships, plus its ini files, icons and readme.
     Get-ChildItem "$source\bin\Release" -Filter *.dll |
         Where-Object { $_.Name -notin "0Harmony.dll", "LastCallBBS.ModAPI.dll" } | Copy-Item -Destination $target
-    Get-ChildItem $source -File | Where-Object { $_.Extension -in ".ini", ".png" } | Copy-Item -Destination $target
+    Get-ChildItem $source -File | Where-Object { $_.Extension -in ".ini", ".png", ".md" } | Copy-Item -Destination $target
 }
 
 Build "$PSScriptRoot\LastCallBBS.Launcher.csproj"
@@ -44,14 +47,25 @@ New-Item -ItemType Directory -Force $fctext | Out-Null
 Copy-Item "$repo\tools\fctext\bin\Release\net472\fctext.exe", "$repo\tools\fctext\bin\Release\net472\fctext.exe.config" $fctext
 Copy-Item "$repo\tools\fcrun.ps1" (Join-Path $stage "tools")
 
-Copy-Item "$PSScriptRoot\install-release.ps1", "$PSScriptRoot\FindGame.ps1", "$repo\README.md" $stage
+Copy-Item "$PSScriptRoot\install-release.ps1", "$PSScriptRoot\InstallMenu.ps1", "$PSScriptRoot\FindGame.ps1", "$repo\README.md" $stage
 New-Item -ItemType Directory -Force (Join-Path $stage "docs") | Out-Null
-Copy-Item "$repo\docs\making-mods.md", "$repo\docs\food-court-format.md", "$repo\docs\food-court-tools.md" (Join-Path $stage "docs")
-Set-Content (Join-Path $stage "Install.cmd") "@powershell -NoProfile -ExecutionPolicy Bypass -File `"%~dp0install-release.ps1`" %*`r`n@pause" -Encoding Ascii -NoNewline
+Copy-Item "$repo\docs\making-mods.md", "$repo\docs\food-court-format.md", "$repo\docs\food-court-netlist.md" (Join-Path $stage "docs")
+# Install.cmd: double-click it, or drop the game's folder (or mod folders) on it.
+$cmd = @(
+    "@echo off",
+    "powershell -NoProfile -ExecutionPolicy Bypass -File `"%~dp0install-release.ps1`" %*",
+    "echo.",
+    "pause"
+)
+Set-Content (Join-Path $stage "Install.cmd") ($cmd -join "`r`n") -Encoding Ascii
 
 $harmonyLicense = Join-Path $env:USERPROFILE ".nuget\packages\lib.harmony\2.3.3\LICENSE"
 $notices = @("Harmony 2.3.3", "", (Get-Content $harmonyLicense -Raw), "", "Mono.Cecil 0.11.5", "", (Get-Content "$PSScriptRoot\third-party\Mono.Cecil-LICENSE.txt" -Raw))
 Set-Content (Join-Path $stage "THIRD-PARTY-NOTICES.txt") $notices -Encoding UTF8
+
+# Releases never contain story files.
+$stories = @(Get-ChildItem $stage -Recurse -File -Include *.z1, *.z2, *.z3, *.z4, *.z5, *.z6, *.z7, *.z8, *.zblorb, *.zlb)
+if ($stories) { throw "Story files found in the release: $($stories.FullName -join ', ')" }
 
 $zip = Join-Path $dist "$name.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
