@@ -1,0 +1,3 @@
+[submodule "yomiel"]
+	path = yomiel
+	url = https://github.com/KawaiiFiveO/yomiel.git

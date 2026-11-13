@@ -1,5 +1,5 @@
 # Builds a release zip that installs without the .NET SDK. Output goes to dist\.
-param([string]$Version = "0.1.0")
+param([string]$Version = "1.0.0")
 $ErrorActionPreference = "Stop"
 
 $repo = Split-Path $PSScriptRoot
