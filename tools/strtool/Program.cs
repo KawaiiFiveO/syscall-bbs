@@ -108,7 +108,7 @@ static class P {
 
   static int Main(string[] a) {
     if (a.Length < 2) {
-      Console.Error.WriteLine("usage: strtool <game exe> <id> [<id>...]\n       strtool <game exe> --all [<out.tsv>]");
+      Console.Error.WriteLine("usage: strtool <game exe> <id> [<id>...]\n       strtool <game exe> --all [<out.tsv>]\n       strtool <game exe> --rewrite <ilspy output dir> [--comments] [--no-aliases] [--names <names.tsv>]");
       return 2;
     }
     var asm = Assembly.LoadFrom(a[0]);
@@ -116,6 +116,18 @@ static class P {
     // A direct delegate call keeps a normal caller frame on the stack (the decryptor rejects reflection callers).
     var f = (Func<int,string>)Delegate.CreateDelegate(typeof(Func<int,string>), m);
     if (a[1] == "--all") return WriteTable(asm, f, m, a.Length > 2 ? a[2] : null);
+    if (a[1] == "--rewrite") {
+      string dir = null, names = null; bool comments = false, aliases = true;
+      for (int i = 2; i < a.Length; i++) {
+        if (a[i] == "--comments") comments = true;
+        else if (a[i] == "--no-aliases") aliases = false;
+        else if (a[i] == "--names" && i + 1 < a.Length) names = a[++i];
+        else if (dir == null && !a[i].StartsWith("--")) dir = a[i];
+        else { Console.Error.WriteLine("unknown argument: " + a[i]); return 2; }
+      }
+      if (dir == null || !Directory.Exists(dir)) { Console.Error.WriteLine("--rewrite needs an existing folder"); return 2; }
+      return Rewrite.Run(asm, m, f, dir, comments, names, aliases);
+    }
     foreach (var s in a.Skip(1)) {
       try { Console.WriteLine(s + "\t" + f(int.Parse(s)).Replace("\r", "").Replace("\n", "\\n")); }
       catch (Exception e) { Console.WriteLine(s + "\tERR " + e.Message); }

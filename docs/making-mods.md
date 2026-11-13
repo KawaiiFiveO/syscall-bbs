@@ -311,6 +311,44 @@ context.Harmony.Patch(target, transpiler: new HarmonyMethod(typeof(MyMod), nameo
 
 `RequireType` and the `Single…` methods throw `ShapeMismatchException` unless exactly one item matches.
 
+### Reading the game's code
+
+`tools\decompile.ps1` in the source repository decompiles the game to C#, with its strings decrypted. Requires the .NET SDK and ilspycmd (`dotnet tool install -g ilspycmd`).
+
+```
+tools\decompile.ps1 -Out <folder> [-Game <game folder or exe>] [-Comments] [-NoAliases] [-IlSpyCmd <path>]
+```
+
+| Option | Effect |
+|---|---|
+| `-Out` | Output folder. Must be new or empty. |
+| `-Game` | Game folder or exe. Default: the installed copy, if only one is found. |
+| `-Comments` | Keep each decoder call, followed by its text as a comment. Default: replace calls with string literals. |
+| `-NoAliases` | Keep obfuscated names, in ILSpy's escaped form (`#=q` is written `_0023_003Dq`). |
+| `-IlSpyCmd` | Path to ilspycmd, if it isn't on `PATH`. |
+
+Some members get readable names, such as `Main`, `WindowUpdate` and `UpdateDownload`. Every other obfuscated name gets a short alias: what it is, then the start of the obfuscated name.
+
+```csharp
+obj_3EFq.Method_YPwk(" QUOTA REACHED ", 17, 20, 5, bool_GsM4: true);
+```
+
+| Alias | Meaning |
+|---|---|
+| `Class_…`, `Struct_…`, `Enum_…`, `Interface_…`, `Delegate_…` | Type |
+| `Method_…`, `Prop_…`, `Event_…`, `Value_…` | Method, property, event, enum value |
+| `int_…`, `vector2_…`, `textureArray_…` | Field or parameter of that type |
+| `obj_…`, `val_…`, `enum_…` | Field or parameter of an obfuscated class, struct or enum |
+
+Files named after obfuscated types take the alias. `aliases.tsv` in the output folder lists every obfuscated name and its alias. Aliases differ between game builds.
+
+To list every string with its id and the methods using it:
+
+```
+dotnet build tools\strtool -c Release
+tools\strtool\bin\Release\net472\strtool.exe "<game>\Last Call BBS.exe" --all <file.tsv>
+```
+
 ## Replacing assets
 
 Mods with `scope = content` or `full` replace game files: `mods\<Name>\Content\<path>` is read instead of `Content\<path>`. A mod with only `content` scope needs no DLL.

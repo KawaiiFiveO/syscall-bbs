@@ -1,0 +1,5 @@
+obfuscated	readable	note
+#=qGCIdKBzoQPL2IuOtSTj09w==	WindowUpdate	GOG. Per-frame window update; Terminal.MainWindow's runs the download quota.
+#=qyWIlN$eoQuergPAsi37Tiw==	WindowUpdate	Steam. Per-frame window update; Terminal.MainWindow's runs the download quota.
+#=qJV0hPHwEcLcOuYjK0TLFW3ecgJKxy_qNXEc9T_6Zedw=	UpdateDownload	GOG. Terminal.MainWindow download tick, called every frame from DesktopScreen.
+#=qY$cdZFZWTv7Gy9XaRskLmZNuNWbQQ_4yIrVQxtePCqc=	UpdateDownload	Steam. Terminal.MainWindow download tick, called every frame from DesktopScreen.
