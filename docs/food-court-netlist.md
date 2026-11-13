@@ -1,14 +1,14 @@
 # Food Court netlist language
 
-A text language for 20th Century Food Court solutions, written like a Verilog netlist. Blocks are named and wired by port, logic can be written as expressions, and the rack is laid out automatically. Netlist files use the extension `.fcn`.
+Text language for 20th Century Food Court solutions, similar to Verilog netlists. Define blocks and write logic as expressions; the rack is laid out automatically. Netlist files use the extension `.fcn`.
 
 ## Commands
 
 | Command | Effect |
 |---|---|
-| `fctext --compile <file.fcn> <new.solution>` | Writes a new, unsolved solution. Never overwrites a file. |
-| `fctext --compile ... --strict` | Every change the compiler would make is an error: buffers, split expressions and optimisations. The solution has exactly the blocks written. |
-| `fctext --compile ... -O0` | No optimisation. Buffers and splits are still added. |
+| `fctext --compile <file.fcn> <new.solution>` | Writes a new, unsolved solution. |
+| `fctext --compile ... --strict` | Any change the compiler would make is treated as an error: buffers, split expressions, optimizations. The solution can only contain the written blocks. |
+| `fctext --compile ... -O0` | No optimization. Buffers and splits are still added. |
 | `fctext --to-netlist <file.solution or text file> [-o <file.fcn>]` | Converts a solution to a netlist. |
 | `fctext --check <file.solution or folder>...` | Also checks that each solution converts to a netlist and back unchanged. |
 
@@ -16,7 +16,7 @@ To edit a netlist while the game is running, use `fcedit.ps1` (see [Food Court T
 
 ## Example
 
-The Walrus, 10 ticks, $75k:
+The Walrus - 10 ticks, $75k, 37 sum of times, 27 wires:
 
 ```verilog
 level Cocktails;
@@ -27,31 +27,35 @@ fixed Output out @(1,0) down;
 Conveyor @(1,5) down;
 Conveyor @(1,4) down;
 Conveyor @(1,3) down;
-fixed SolidInputSingle   #(1) cups   @(2,3) down  (.IN1(scan.START));
-fixed FreezerInputSingle #(0) ice    @(0,3) right (.IN1(s_tray.SENSE & (c.B | b.C)));
-fixed LiquidInputDouble  #(0) spirit @(0,2) right (.IN2(b.A));
-fixed LiquidInputDouble  #(1) mixer  @(3,2) left  (.IN1(c.C), .IN2(b.D));
-Sorter  s_cup  @(2,2) down (.RIGHT(go));
-Sorter  s_tray @(1,2) down (.LEFT(a.A), .THRU(go));
-Stacker stack  @(1,1) down (.EJECT(b.B));
 
-assign sour = a.D | scan.W_SOUR | scan.HIGHBALL;
-assign go   = scan.WHISKY | sour | c.D | a.C;
+fixed SolidInputSingle   #(1) cups    @(2,3) down  (.IN1(scan.START));
+fixed FreezerInputSingle #(0) freezer @(0,3) right (.IN1(add_ice));
+fixed LiquidInputDouble  #(0) spirits @(0,2) right (.IN2(serve.A));
+fixed LiquidInputDouble  #(1) mixers  @(3,2) left  (.IN1(cola.C), .IN2(serve.D));
 
-Sequencer a (.START(go)) {
+Sorter  cup_sorter  @(2,2) down (.RIGHT(advance));
+Sorter  tray_sorter @(1,2) down (.LEFT(shuttle.A), .THRU(advance));
+Stacker stack       @(1,1) down (.EJECT(serve.B));
+
+assign start_serve = shuttle.D | scan.W_SOUR | scan.HIGHBALL;
+assign advance = scan.WHISKY | start_serve | cola.D | shuttle.C;
+assign add_ice = tray_sorter.SENSE & (cola.B | serve.C);
+
+Sequencer shuttle (.START(advance)) {
     A = [2];
     B = [4, 6, 7];
     C = [4];
     D = [1, 3, 5];
 }
-Sequencer b (.START(sour), .STOP(a.B)) {
+
+Sequencer serve (.START(start_serve), .STOP(shuttle.B)) {
     A = [2, 4];
     B = [0, 6];
     C = [3];
     D = [3];
 }
-Sequencer c (.START(scan.COLA | c.A | scan.HIGHBALL), .STOP(sour)) {
-    A = [3, 4];
+
+Sequencer cola (.START(scan.COLA | scan.HIGHBALL), .STOP(start_serve)) {
     B = [0, 1, 2, 4, 7];
     C = [0, 1, 2, 3, 4];
     D = [4, 5, 7, 8, 9];
@@ -60,9 +64,9 @@ Sequencer c (.START(scan.COLA | c.A | scan.HIGHBALL), .STOP(sour)) {
 
 ## File structure
 
-* A file starts with `level <name>;`, the level's internal name (as in the level documents), and `name "<text>";`, the solution's name. Both are required.
+* A file starts with `level <name>;`, the level's internal name, and `name "<text>";`, the solution's name. Both are required.
 * Statements end with `;`, except after a sequencer's step list.
-* Comments are `//` to the end of the line, or `/* ... */`.
+* Comments are `//` at the end of the line, or `/* ... */`.
 * Names are letters, digits and `_`, and don't start with a digit. `level`, `name`, `fixed`, `assign` and `wire` are reserved.
 
 ## Blocks
@@ -75,7 +79,7 @@ Sequencer c (.START(scan.COLA | c.A | scan.HIGHBALL), .STOP(sour)) {
 |---|---|
 | `fixed` | A part of the level that can't be removed. |
 | `<Type>` | The module type, such as `Sorter` or `CounterSmall`. See the module catalogue in [Food Court solution format](food-court-format.md). |
-| `#(...)` | The module's settings: a dispenser's item, a counter's deltas (2 for a small counter, 4 for a large one), a painter's 2 values, an animatronic's flag (`#(0)` or `#(1)`). |
+| `#(...)` | The module's settings: a dispenser's item, a counter's deltas (2 for small counter, 4 for large), a painter's 2 values, an animatronic's flag (`#(0)` or `#(1)`). |
 | `<name>` | Needed to use the block's outputs. |
 | `@(x,y) facing` | Floor position. `facing` is `right`, `up`, `left` or `down`. |
 | `.PORT(expr)` | What drives the input `PORT`. Each input can be driven once. |
@@ -92,11 +96,11 @@ Sequencer a (.START(go), .STOP(halt)) {
 }
 ```
 
-Each output, `A` to `D`, lists the steps it is on, from step 0 (the tick after START) to step 11. Outputs left out are never on. `{ }` is an empty sequencer.
+Each output, `A` to `D`, lists the steps it is ON, from step 0 (the tick after START) to step 11. Outputs left out are never ON. `{ }` is an empty sequencer.
 
 ### Socket names
 
-Sockets use the catalogue names or these short forms:
+Sockets use the catalogue names or short forms:
 
 | Short | Catalogue | Used on |
 |---|---|---|
@@ -109,7 +113,7 @@ Sockets use the catalogue names or these short forms:
 
 * `<name>.<SOCKET>` is a block's output, such as `scan.WHISKY`. A block with one output can be written as just `<name>`.
 * `a | b` is OR and `a & b` is AND. There is no NOT; use a counter.
-* `assign <net> = <expr>;` names an expression. Assigning a single signal costs nothing.
+* `assign <net> = <expr>;` to name an expression. Assigning a single signal is free.
 * `wire <net>, ...;` declares names before they are assigned. Optional.
 * Expressions can be used in `assign` and in `.PORT(...)`.
 
@@ -127,19 +131,18 @@ assign more = count(3*scan.3_PCS + 6*scan.6_PCS + 10*scan.10_PCS - maker.SENSE) 
 assign last = count(4 - micro.SENSE) == 0;
 ```
 
-`count(<sum>) <comparison> <number>` builds a counter. The sum adds up how many earlier ticks each signal was on, times its weight. Terms are `3*a`, `a`, `-b` or a number, joined by `+` and `-`. A number counts from tick 1.
+`count(<sum>) <comparison> <number>` creates a counter. The sum adds up how many earlier ticks each signal was on, times its weight. Terms are `3*a`, `a`, `-b` or a number, joined by `+` and `-`. A number counts from tick 1.
 
 | Comparison | Uses |
 |---|---|
 | `== n` | ZERO |
 | `> n` | POS |
-| `< n` | POS, with the weights negated |
-| `>= n`, `<= n` | ZERO or POS, plus one mixer |
-| `!=` | Not allowed (needs NOT) |
+| `< n` | POS, with weights negated |
+| `>= n`, `<= n` | ZERO or POS + one mixer |
 
 * A sum with at most 2 signals, weights up to ±9 and only `==` comparisons gets a `CounterSmall` ($3k). Otherwise it gets a `CounterLarge` ($5k): at most 4 signals, weights up to ±99.
-* Comparisons of the same sum share one counter.
-* A counter is never on at tick 0, and its value stops at ±99.
+* Comparisons of the same sum share a counter.
+* A counter is never on at T0, and its value stops at ±99.
 
 ## Functions
 
@@ -147,8 +150,8 @@ Shorthands for common patterns. Each builds one block and can be used in any exp
 
 | Function | On when | Builds | Cost |
 |---|---|---|---|
-| `at_tick(k)` | Tick k only (0 to 100) | Nothing for tick 0; otherwise a sequencer channel or a counter, whichever is cheapest | Free to $5k |
-| `from_tick1()` | Every tick from tick 1 | `CounterSmall` | $3k |
+| `at_tick(k)` | Tick k only (0 to 100) | Nothing for T0; otherwise a sequencer channel or a counter, whichever is cheapest | Free to $5k |
+| `from_tick1()` | Every tick from T1 | `CounterSmall` | $3k |
 | `never(x)` | x hasn't fired in an earlier tick | `CounterSmall` | $3k |
 | `since(x)` | x has fired in an earlier tick | `CounterLarge` | $5k |
 | `exactly(x, n)` | x fired exactly n times in earlier ticks (n 1 to 9) | `CounterSmall` | $3k |
@@ -157,7 +160,7 @@ Shorthands for common patterns. Each builds one block and can be used in any exp
 | `delay(x, n)` | n ticks after x (n 1 to 12) | Sequencer | $5k |
 | `hold(x, n)` | The n ticks after x (n 1 to 12) | Sequencer | $5k |
 
-* Counter functions are never on at tick 0, and see x one tick late: if x fires on tick t, `never(x)` is off from tick t+1.
+* Counter functions are never on at T0, and see x one tick late: if x fires on tick t, `never(x)` is off from tick t+1.
 * A sequencer ignores START while it runs, so `delay` and `hold` miss an x that comes before the previous one is finished.
 * `delay` and `hold` with the same x share one sequencer, up to 4. The same call written twice builds one block.
 * A function can't feed back into its own argument. Write the counter or sequencer as a block instead.
@@ -168,15 +171,15 @@ Shorthands for common patterns. Each builds one block and can be used in any exp
 The compiler:
 
 1. Splits ORs of more than 4 terms and chains ANDs.
-2. Optimises (not with `-O0` or `--strict`).
-3. Adds buffers: a signal used more often than its output allows gets `MixerSimple` buffers, $1k each, each turning one use into four.
-4. Lays out the rack and checks the solution and the game's placement rules.
+2. optimizes (unless `-O0` or `--strict`).
+3. Adds buffers: a signal used more often than its output allows gets `MixerSimple` buffers, $1k each.
+4. Lays out the rack, then checks the solution and placement rules.
 
-Mixers have no delay, so none of this changes timing.
+Mixers have no delay, so timing remains unchanged.
 
-Errors: unknown names, sockets or types, an input driven twice, a loop made only of mixers, and anything the game wouldn't accept.
+Errors: unknown names, sockets or types, an input driven twice, a loop made only of mixers, anything the game wouldn't accept.
 
-### Optimisation
+### Optimization
 
 Repeated until nothing changes:
 
@@ -186,16 +189,16 @@ Repeated until nothing changes:
 * Mixers with the same inputs are merged.
 * A simple mixer used only as an OR input of another mixer is merged into it, if the inputs fit.
 
-Then unused mixers are removed. `at_tick(k)` and `delay(scan.START, k)` are each built as a sequencer channel or a counter, whichever makes the whole build cheapest. Other counters and sequencers are kept as written.
+Then unused mixers are removed. `at_tick(k)` and `delay(scan.START, k)` are each built as a sequencer channel or a counter, whichever makes the build cheapest. Other counters and sequencers are kept as written.
 
 ### Warnings
 
-Each compile warns about logic that can never matter. Nothing is removed.
+The compiler warns about dead logic.
 
 | Warning | Meaning |
 |---|---|
-| `a.A only feeds a's own START, at steps 3, 4, while it's running` | A running sequencer ignores START. |
-| `m.B: its input seq.C is never on (channel C has no steps)` | The input is driven by something that is never on. |
+| `a.A only feeds a's own START, at steps 3, 4, while it's running` | A running sequencer ignores START |
+| `m.B: its input seq.C is never on (channel C has no steps)` | Input is driven by something that is never on |
 | `seq has no START, so it never runs` | |
 | `ctr drives nothing ($3k)` | |
 | `ctr.TA has delta 0, so its input x does nothing` | |
@@ -214,12 +217,6 @@ compiled the-walrus.fcn: 20 modules, 28 wires
   opt     saved $1k in total
 ```
 
-| Prefix | Lines |
-|---|---|
-| `func` | Each function and `count()`: its block and cost, or the block it shares |
-| `added` | Buffers and split ORs |
-| `opt` | Each optimisation, and the total saved |
-
 ### Rack layout
 
 Rack blocks are placed in source order, 2-wide blocks first, each in the first free slot: rows 0 to 2, columns 0 to 10. More than 33 slots is an error.
@@ -228,4 +225,4 @@ Rack blocks are placed in source order, 2-wide blocks first, each in the first f
 
 `--to-netlist` names blocks by role (`scan`, `out`, `stack`) or by kind and number (`solid1`, `pump1`, `scanner1`). Sequencers are written as step lists, mixers as `assign` statements, and counters as a function or `count()` where that compiles back to the same counter, otherwise as blocks.
 
-`--to-netlist` followed by `--compile --strict` gives the same solution, apart from rack positions and which input of a mixer or trigger of a counter each wire uses.
+`--to-netlist` followed by `--compile --strict` gives the same solution, aside from rack positions and which input of a mixer or counter each wire uses.

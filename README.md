@@ -8,8 +8,8 @@ https://github.com/user-attachments/assets/56f08b51-0a20-489b-b9f9-bf7041386f72
 
 ## Requirements
 
-* Release zip: Windows, .NET Framework 4.7.2 or later.
-* Building from source: .NET SDK and the .NET Framework 4.7.2 Developer Pack.
+* Release zip: Windows, .NET Framework 4.7.2 or later
+* Building from source: .NET SDK, .NET Framework 4.7.2 Developer Pack
 
 ## Installation
 
@@ -45,7 +45,7 @@ mods\
 
 ## Mods
 
-To install a mod, copy its folder into `mods\` in the game folder. Each mod's settings are in `mods\<Name>\config.ini`, and its documentation in `mods\<Name>\README.md`.
+To install a mod, copy its folder into `mods\` in the game folder. Each mod's settings are in `mods\<Name>\config.ini`, and documentation is in `mods\<Name>\README.md`.
 
 **Warning:** Mods run with the same permissions as the game. Only install mods from sources you trust.
 

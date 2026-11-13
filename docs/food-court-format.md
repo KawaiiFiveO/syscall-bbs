@@ -1,12 +1,12 @@
 # Food Court solution format
 
-20th Century Food Court stores each solution as a binary `.solution` file. `fctext` converts them to and from a text format.
+20th Century Food Court stores each solution as a binary `.solution` file. `fctext` converts them to and from text format.
 
-**Warning:** The game reads every solution at startup. A malformed `.solution` file can stop the game from starting. Back up solution files before editing them.
+**Warning:** A malformed `.solution` file can stop the game from starting. Back up solution files before editing them.
 
 ## fctext
 
-`fctext.exe` is at `tools\fctext\bin\Release\net472\fctext.exe` in the release zip and in a source build.
+`fctext.exe` is at `tools\fctext\bin\Release\net472\fctext.exe` in the release zip or source build.
 
 | Command | Effect |
 |---|---|
@@ -16,7 +16,7 @@
 | `fctext --import <text file> <new.solution>` | Writes a new solution from text, after validation. The result is unsolved with a cost of 0. |
 | `fctext --compile <file.fcn> <new.solution>` | Writes a new solution from a netlist. See [Food Court netlist language](food-court-netlist.md). |
 | `fctext --to-netlist <file.solution or text file> [-o <file.fcn>]` | Converts a solution to a netlist. |
-| `fctext --check-placement <solution, text file or folder>...` | Applies the game's placement rules: floor and rack fit, overlaps, required rows and rotations, and what a pump may aim at. |
+| `fctext --check-placement <solution, text file or folder>...` | Applies the game's placement rules: floor and rack fit, overlaps, required rows and rotations, and pump rules. |
 
 ## Binary layout
 
@@ -123,4 +123,4 @@ The output socket comes first. A socket is its name, such as `INPUT_A`, or `#` a
 
 ## Module catalogue
 
-`tools\fctext\ModuleCatalog.cs` lists the 80 module types, generated from the game's module definitions. 28 of them have been checked against real solution files.
+`tools\fctext\ModuleCatalog.cs` lists the 80 module types, generated from the game's module definitions.
