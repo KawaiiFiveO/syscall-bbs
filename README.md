@@ -40,12 +40,12 @@ Mono.Cecil.dll
 LastCallBBS.ModAPI.dll
 LastCallBBS.Launcher.ini
 LastCallBBS.Launcher.log
-mods\
+mods/
 ```
 
 ## Mods
 
-To install a mod, copy its folder into `mods\` in the game folder. Each mod's settings are in `mods\<Name>\config.ini`, and documentation is in `mods\<Name>\README.md`.
+To install a mod, copy its folder into `mods/` in the game folder. Each mod's settings are in `mods/<Name>/config.ini`, and documentation is in `mods/<Name>/README.md`.
 
 **Warning:** Mods run with the same permissions as the game. Only install mods from sources you trust.
 
@@ -59,7 +59,7 @@ AllowUnscoped.<id> = true
 
 ### SkipLoading
 
-`SkipLoading` is installed by default. It allows downloads to finish instantly and removes the 15-minute quota. Settings are in `mods\SkipLoading\config.ini`.
+`SkipLoading` is installed by default. It allows downloads to finish instantly and removes the 15-minute quota. Settings are in `mods/SkipLoading/config.ini`.
 
 ### Yomiel
 
@@ -87,11 +87,11 @@ Edit `LastCallBBS.Launcher.ini` in the game folder.
 
 ## Build
 
-* Build, install and verify: `launcher\install.ps1 [-GameDir <dir>] [-Mods <names>]`
-* Yomiel, the Z-machine core, is the `yomiel\` submodule: `git submodule update --init` (see [yomiel/docs/library.md](yomiel/docs/library.md))
+* Build, install and verify: `launcher/install.ps1 [-GameDir <dir>] [-Mods <names>]`
+* Yomiel, the Z-machine core, is the `yomiel/` submodule: `git submodule update --init` (see [yomiel/docs/library.md](yomiel/docs/library.md))
 * Releases: pushing a `v*` tag runs `.github/workflows/release.yml`, which attaches the zip to a draft release
-* Release zip: `launcher\package.ps1`, written to `dist\`
-* Tests: `tests\run-tests.ps1`
+* Release zip: `launcher/package.ps1`, written to `dist/`
+* Tests: `tests/run-tests.ps1`
 
 ## License
 

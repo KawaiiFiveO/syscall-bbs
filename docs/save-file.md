@@ -6,9 +6,9 @@ Last Call BBS keeps progress for the desktop and every program in one text file,
 
 ## Location
 
-`Documents\My Games\Last Call BBS\<user>\save.dat`, where `<user>` is `NonSteamUser` on GOG and the SteamID64 on Steam.
+`Documents/My Games/Last Call BBS/<user>/save.dat`, where `<user>` is `NonSteamUser` on GOG and the SteamID64 on Steam.
 
-The game writes a backup to `<user>\backup\save-<ticks>.dat` at most once a minute, and keeps the newest 10.
+The game writes a backup to `<user>/backup/save-<ticks>.dat` at most once a minute, and keeps the newest 10.
 
 ## Format
 

@@ -1,6 +1,6 @@
 # Making mods
 
-A mod is a .NET Framework DLL in its own folder under `mods\`, with a `mod.ini`. `mods\Typewriter` and `mods\FoodCourtStats` in the source repository are complete examples.
+A mod is a .NET Framework DLL in its own folder under `mods/`, with a `mod.ini`. `mods/Typewriter` and `mods/FoodCourtStats` in the source repository are complete examples.
 
 ## Project
 
@@ -22,8 +22,8 @@ A class library targeting `net472`, C# 10 or later:
 * `LastCallBBS.ModAPI.dll` and `0Harmony.dll` are in the game folder after installation.
 * Mods with `scope = full` that patch the game also reference `0Harmony.dll`, with `Private="false"`.
 * Inside the source repository, use `<ProjectReference Include="..\..\modapi\LastCallBBS.ModAPI.csproj" Private="false" />` instead.
-* Build outside the game folder, then copy the DLL into `mods\<Name>\`.
-* User documentation goes in `mods\<Name>\README.md`, which ships with the mod. Formats and tools that work without the mod go in `docs\`.
+* Build outside the game folder, then copy the DLL into `mods/<Name>/`.
+* User documentation goes in `mods/<Name>/README.md`, which ships with the mod. Formats and tools that work without the mod go in `docs/`.
 
 ## mod.ini
 
@@ -71,7 +71,7 @@ public sealed class MyMod : IMod
 | Member | Value |
 |---|---|
 | `Id`, `Name`, `Version` | From `mod.ini`. |
-| `Directory` | The mod's folder, `mods\<Name>`. |
+| `Directory` | The mod's folder, `mods/<Name>`. |
 | `Scopes` | The scopes from `mod.ini`. |
 | `Log` | `Info`, `Warn` and `Error`. Writes to the console and `LastCallBBS.Launcher.log`, labelled with the mod's id. |
 | `Config` | The mod's `config.ini`. See [Configuration](#configuration). |
@@ -166,7 +166,7 @@ string label = context.Config.GetString("Label", "Default");
 
 ## Desktop programs
 
-A program is a text window opened from a desktop icon. Requires `scope = programs` or `full`. `mods\Typewriter` is an example.
+A program is a text window opened from a desktop icon. Requires `scope = programs` or `full`. `mods/Typewriter` is an example.
 
 ```csharp
 public void OnLoad(ModContext context) =>
@@ -259,7 +259,7 @@ Colours are `TextColor`, created with `TextColor.FromRgb(0xRRGGBB)` or `new Text
 
 Typed characters come before other keys in the same frame.
 
-`window.DataDirectory` and `context.Programs.DataDirectory` are the mod's folder for saved files, `My Games\Last Call BBS\<user>\mods\<id>`. The folder is created on first use. It is available once the game is running, not in `OnLoad`.
+`window.DataDirectory` and `context.Programs.DataDirectory` are the mod's folder for saved files, `My Games/Last Call BBS/<user>/mods/<id>`. The folder is created on first use. It is available once the game is running, not in `OnLoad`.
 
 ## Sounds
 
@@ -270,8 +270,8 @@ context.Sounds.PlayGameSound("desktop/win_open");
 context.Sounds.PlayGameSound("desktop/load_m", 0.8f);
 ```
 
-* `name` is the sound's path under `Content\sounds\fx` without the extension.
-* A name with a folder of variants, such as `desktop/load_m` for `Content\sounds\fx\desktop\load_m.array`, plays one of them at random.
+* `name` is the sound's path under `Content/sounds/fx` without the extension.
+* A name with a folder of variants, such as `desktop/load_m` for `Content/sounds/fx/desktop/load_m.array`, plays one of them at random.
 * `volume` is 0 to 1.
 * It returns `false` if the sound couldn't play. The first failure for each name is logged.
 
@@ -313,10 +313,10 @@ context.Harmony.Patch(target, transpiler: new HarmonyMethod(typeof(MyMod), nameo
 
 ### Reading the game's code
 
-`tools\decompile.ps1` in the source repository decompiles the game to C#, with its strings decrypted. Requires the .NET SDK and ilspycmd (`dotnet tool install -g ilspycmd`).
+`tools/decompile.ps1` in the source repository decompiles the game to C#, with its strings decrypted. Requires the .NET SDK and ilspycmd (`dotnet tool install -g ilspycmd`).
 
 ```
-tools\decompile.ps1 -Out <folder> [-Game <game folder or exe>] [-Comments] [-NoAliases] [-IlSpyCmd <path>]
+tools/decompile.ps1 -Out <folder> [-Game <game folder or exe>] [-Comments] [-NoAliases] [-IlSpyCmd <path>]
 ```
 
 | Option | Effect |
@@ -345,13 +345,13 @@ Files named after obfuscated types take the alias. `aliases.tsv` in the output f
 To list every string with its id and the methods using it:
 
 ```
-dotnet build tools\strtool -c Release
-tools\strtool\bin\Release\net472\strtool.exe "<game>\Last Call BBS.exe" --all <file.tsv>
+dotnet build tools/strtool -c Release
+tools/strtool/bin/Release/net472/strtool.exe "<game>/Last Call BBS.exe" --all <file.tsv>
 ```
 
 ## Replacing assets
 
-Mods with `scope = content` or `full` replace game files: `mods\<Name>\Content\<path>` is read instead of `Content\<path>`. A mod with only `content` scope needs no DLL.
+Mods with `scope = content` or `full` replace game files: `mods/<Name>/Content/<path>` is read instead of `Content/<path>`. A mod with only `content` scope needs no DLL.
 
 Most textures are packed `.tex` files. A `.tex` can be replaced as is, but there is no PNG to `.tex` converter. To add new images, see [Textures](#textures).
 

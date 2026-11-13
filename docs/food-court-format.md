@@ -6,7 +6,7 @@
 
 ## fctext
 
-`fctext.exe` is at `tools\fctext\bin\Release\net472\fctext.exe` in the release zip or source build.
+`fctext.exe` is at `tools/fctext/bin/Release/net472/fctext.exe` in the release zip or source build.
 
 | Command | Effect |
 |---|---|
@@ -123,4 +123,4 @@ The output socket comes first. A socket is its name, such as `INPUT_A`, or `#` a
 
 ## Module catalogue
 
-`tools\fctext\ModuleCatalog.cs` lists the 80 module types, generated from the game's module definitions.
+`tools/fctext/ModuleCatalog.cs` lists the 80 module types, generated from the game's module definitions.

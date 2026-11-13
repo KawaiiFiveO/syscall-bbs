@@ -4,7 +4,7 @@ A desktop program that plays Z-machine interactive fiction (`.z5`, `.z8`), built
 
 ## Playing
 
-1. Put story files in `mods\YomielPlayer\stories\`. Free stories are on [IFDB](https://ifdb.org/) and the [IF Archive](https://ifarchive.org/).
+1. Put story files in `mods/YomielPlayer/stories/`. Free stories are on [IFDB](https://ifdb.org/) and the [IF Archive](https://ifarchive.org/).
 2. Open Yomiel on the desktop.
 
 Closing the window keeps the story's place.
@@ -27,6 +27,6 @@ The Mono font is ASCII only.
 
 ## Files
 
-`Documents\My Games\Last Call BBS\<user>\mods\onehalf.yomielplayer\` holds `preferences.ini` (menu choices) and a folder per story with its saves, `SCRIPT` transcripts, `RECORDING` files, `commands.txt` for `REPLAY`, and its own `preferences.ini`.
+`Documents/My Games/Last Call BBS/<user>/mods/onehalf.yomielplayer/` holds `preferences.ini` (menu choices) and a folder per story with its saves, `SCRIPT` transcripts, `RECORDING` files, `commands.txt` for `REPLAY`, and its own `preferences.ini`.
 
-Window size, story folder, scrollback and `[MORE]` prompts are set in `mods\YomielPlayer\config.ini`.
+Window size, story folder, scrollback and `[MORE]` prompts are set in `mods/YomielPlayer/config.ini`.
