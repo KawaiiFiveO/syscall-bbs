@@ -135,11 +135,13 @@ function Test-Build([string]$gameDir) {
     Check (($log -match "Hook .*: OK").Count -eq 8) "all 8 hooks attach"
     Check ($log -match "Textures: OK").Count "texture loading finds its game code"
     Check ($log -match "Programs: OK").Count "desktop programs find their game code"
+    Check ($log -match "Sounds: OK").Count "sounds find their game code"
     Check ($log -match "Loaded Skip Loading").Count "SkipLoading loads"
     Check ($log -match "Instant downloads: applied").Count "download patch applies"
     Check ($log -match "No download cooldown: applied").Count "cooldown patch applies"
     Check ($log -match "Loaded Hook Logger").Count "HookLogger passes its scope check"
-    Check (($log -match "Loaded Food Court Tools").Count -and -not ($log -match "simulation runner unavailable|level export unavailable|live editing unavailable").Count) "FoodCourtTools finds its game code"
+    Check (($log -match "Loaded Food Court Tools").Count -and -not ($log -match "simulation runner unavailable|level export unavailable|live editing unavailable|playback speeds unavailable").Count) "FoodCourtTools finds its game code"
+    Check ($log -match "Fast-forward speeds: 3, 6, 12, 20 ticks/s").Count "playback speeds patch applies"
     if ($isSteam) {
         Check ($log -match "relaunch through Steam disabled").Count "Steam relaunch disabled"
         Check ($log -match "leaderboards blocked \(6 calls\)").Count "leaderboards blocked"
@@ -155,13 +157,14 @@ function Test-Build([string]$gameDir) {
     foreach ($case in $all) { Add-Mod $case $modsDir $sandbox $helperDll }
 
     # The examples aren't installed by default, but must keep working.
-    foreach ($name in @("FoodCourtStats", "Typewriter")) {
+    foreach ($name in @("FoodCourtStats", "Typewriter", "YomielPlayer")) {
         $example = Join-Path $repo "mods\$name"
         & dotnet build (Join-Path $example "$name.csproj") -c Release -v q | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "Could not build the example mod $name" }
         $exampleDir = Join-Path $modsDir $name
         New-Item -ItemType Directory -Force $exampleDir | Out-Null
-        Copy-Item (Join-Path $example "bin\Release\$name.dll") $exampleDir
+        Get-ChildItem (Join-Path $example "bin\Release") -Filter *.dll |
+            Where-Object { $_.Name -notin "0Harmony.dll", "LastCallBBS.ModAPI.dll" } | Copy-Item -Destination $exampleDir
         Get-ChildItem $example -File | Where-Object { $_.Extension -in ".ini", ".png" } | Copy-Item -Destination $exampleDir
     }
 
@@ -195,6 +198,7 @@ function Test-Build([string]$gameDir) {
     Check ($log -match "full_access has full access").Count "full-access mod is flagged"
     Check ($log -match "Loaded Food Court Stats").Count "example mod passes its scope check"
     Check ($log -match "Loaded Typewriter").Count "example program loads"
+    Check ($log -match "Loaded Yomiel ").Count "Yomiel loads with its interpreter DLL and passes the scope check"
     $loadedAt = { param($id) ($log | Select-String -Pattern "\] Loaded .*\(test\.$id\)" | Select-Object -First 1).LineNumber }
     Check ((& $loadedAt "zz_required") -lt (& $loadedAt "aa_requires_later")) "a required mod loads first"
     Check ((& $loadedAt "zz_required") -lt (& $loadedAt "ab_after_later")) "an 'after' mod loads later"

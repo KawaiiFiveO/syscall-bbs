@@ -77,6 +77,7 @@ public sealed class MyMod : IMod
 | `Hooks` | See [Hooks](#hooks). |
 | `Textures` | See [Textures](#textures). |
 | `Programs` | See [Desktop programs](#desktop-programs). |
+| `Sounds` | See [Sounds](#sounds). |
 | `Game` | The game assembly. `scope = full` only. |
 | `Harmony` | The mod's Harmony instance, id `mod.<id>`. `scope = full` only. |
 | `ReportProblem(message)` | Reports that part of the mod couldn't be applied. The rest stays loaded. The problem is logged, fails `--verify` and appears in the startup warning. |
@@ -180,13 +181,30 @@ public void OnLoad(ModContext context) =>
 | Member | Called |
 |---|---|
 | `Title` | Every frame. |
-| `Columns`, `Rows` | When the window opens. At most 106×34. |
+| `Columns`, `Rows` | When the window opens. At most 106×34, or 106×33 with a menu. |
 | `Opened(window)` | When the window opens, with a blank screen. |
 | `KeyPressed(window, key)` | On each key press or auto-repeat, in the top window only. |
 | `Update(window, seconds)` | Every frame while shown, after that frame's keys. The screen is drawn afterwards. |
 | `Closed(window)` | When the window closes. |
 
 An exception from any member stops the program until its window is reopened. The window shows the error and the log has the details.
+
+### Menu
+
+A program that also implements `IProgramMenu` gets a menu in its window's title bar and a minimize button. The frame is 16 pixels taller, so the grid fits at most 33 rows (`TextScreen.MaxRowsWithMenu`).
+
+```csharp
+public IReadOnlyList<ProgramMenuItem> MenuItems => new[]
+{
+    new ProgramMenuItem("New Page", () => _lines.Clear()),
+    ProgramMenuItem.Separator,
+    new ProgramMenuItem("Print", Print, enabled: _lines.Count > 0),
+};
+```
+
+* `MenuItems` is read every frame. Return the same list when nothing has changed.
+* Actions run on the game's main thread. An exception stops the program, as for the other members.
+* A minimized window gets no `Update` calls. The next `Update` reports all the time since the last one.
 
 `window.Screen` is a `TextScreen`. Cells are 9×15 pixels. Column 0, row 0 is the top left. Writes outside the grid are clipped.
 
@@ -206,8 +224,20 @@ An exception from any member stops the program until its window is reopened. The
 | `Background` | Background for writes that don't specify one, and the window background. Default `0x101418`. |
 | `CursorColumn`, `CursorRow` | Cursor position. |
 | `CursorVisible` | Shows a blinking block cursor. |
+| `Font` | The font the grid is drawn in. See below. |
 
 Colours are `TextColor`, created with `TextColor.FromRgb(0xRRGGBB)` or `new TextColor(r, g, b)`.
+
+`TextFont` values:
+
+| Value | Font |
+|---|---|
+| `Bold` | The desktop font as the terminal draws it (`system_bold`). The default. |
+| `Regular` | The desktop font's thinner face (`system_regular`). |
+| `Mono` | The game's monospaced font (`font_cpmono`): thin, ASCII only. Accented letters lose their accents; other characters are drawn from `Cga`. |
+| `Cga` | The game's IBM PC font (`font_cga`): 8×8, code page 437, with accented letters and box drawing. Characters outside code page 437 show as `?`. |
+
+`Bold` and `Regular` are proportional, with each glyph centred in its cell. They lack `=`, `@`, `$`, `_`, `{`, `}`, `|`, `~` and accented letters, and draw `<` and `>` as tall chevrons; those characters are drawn from `Mono` instead, then `Cga`. A character no font has shows as `?`.
 
 `KeyPress` members:
 
@@ -229,6 +259,30 @@ Colours are `TextColor`, created with `TextColor.FromRgb(0xRRGGBB)` or `new Text
 Typed characters come before other keys in the same frame.
 
 `window.DataDirectory` and `context.Programs.DataDirectory` are the mod's folder for saved files, `My Games\Last Call BBS\<user>\mods\<id>`. The folder is created on first use. It is available once the game is running, not in `OnLoad`.
+
+## Sounds
+
+`context.Sounds.PlayGameSound(name, volume)` plays one of the game's sound effects. Every mod can use it. Call it on the game's main thread (program callbacks and hooks) once the game is running, not in `OnLoad`.
+
+```csharp
+context.Sounds.PlayGameSound("desktop/win_open");
+context.Sounds.PlayGameSound("desktop/load_m", 0.8f);
+```
+
+* `name` is the sound's path under `Content\sounds\fx` without the extension.
+* A name with a folder of variants, such as `desktop/load_m` for `Content\sounds\fx\desktop\load_m.array`, plays one of them at random.
+* `volume` is 0 to 1.
+* It returns `false` if the sound couldn't play. The first failure for each name is logged.
+
+Sounds that suit programs:
+
+| Name | Sound | Length |
+|---|---|---|
+| `desktop/load_s`, `load_m`, `load_l` | Disk activity when the game loads a program: short, medium, long | 0.85, 1.25, 1.65 s |
+| `desktop/load_panic` | Disk error | 1.0 s |
+| `desktop/win_open`, `win_close`, `win_minimize`, `win_unminimize` | Window chrome | 0.6 s |
+| `desktop/menu_open`, `menu_close` | Menu panel | 0.6 s |
+| `terminal/dial_bbs`, `terminal/download` | Modem | |
 
 ## Patching the game
 

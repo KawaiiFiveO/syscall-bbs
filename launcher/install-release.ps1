@@ -3,7 +3,8 @@
 param(
     [string]$GameDir = "",
     [switch]$WithHookLogger,
-    [switch]$WithFoodCourtTools
+    [switch]$WithFoodCourtTools,
+    [switch]$WithYomiel
 )
 $ErrorActionPreference = "Stop"
 
@@ -31,6 +32,7 @@ foreach ($file in Get-ChildItem (Join-Path $PSScriptRoot "files") -File) {
 Get-ChildItem (Join-Path $PSScriptRoot "mods") -Directory | ForEach-Object { Install-Mod $_.FullName }
 if ($WithHookLogger) { Install-Mod (Join-Path $PSScriptRoot "optional-mods\HookLogger") }
 if ($WithFoodCourtTools) { Install-Mod (Join-Path $PSScriptRoot "optional-mods\FoodCourtTools") }
+if ($WithYomiel) { Install-Mod (Join-Path $PSScriptRoot "optional-mods\YomielPlayer") }
 
 $process = Start-Process -FilePath (Join-Path $GameDir "Last Call BBS (Modded).exe") -ArgumentList "--verify" -Wait -PassThru
 if ($process.ExitCode -ne 0) { Write-Warning "Verification reported problems. See LastCallBBS.Launcher.log in $GameDir." }

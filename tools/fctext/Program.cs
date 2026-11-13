@@ -14,12 +14,28 @@ internal static class Program
         "  fctext <file.solution> -o <file.txt>          write one solution to a text file\n" +
         "  fctext --check <file.solution or folder>...   confirm files are fully understood\n" +
         "  fctext --import <text file> <new.solution>    write a new solution from text\n" +
-        "  fctext --check-placement <solution, text file or folder>...   apply the game's placement rules";
+        "  fctext --check-placement <solution, text file or folder>...   apply the game's placement rules\n" +
+        "  fctext --compile <file.fcn> <new.solution> [--strict] [-O0]   compile a netlist\n" +
+        "  fctext --to-netlist <file.solution or text file> [-o <file.fcn>]   write a solution as a netlist";
 
     private static int Main(string[] args)
     {
         if (args.Length > 0 && args[0] == "--import")
             return args.Length == 3 ? Import(args[1], args[2]) : Fail(Usage);
+
+        if (args.Length > 0 && args[0] == "--compile")
+        {
+            bool strict = args.Contains("--strict"), optimise = !args.Contains("-O0");
+            string[] rest = args.Skip(1).Where(a => a != "--strict" && a != "-O0").ToArray();
+            return rest.Length == 2 ? CompileNetlist(rest[0], rest[1], strict, optimise) : Fail(Usage);
+        }
+
+        if (args.Length > 0 && args[0] == "--to-netlist")
+        {
+            if (args.Length == 2)
+                return ToNetlist(args[1], null);
+            return args.Length == 4 && args[2] == "-o" ? ToNetlist(args[1], args[3]) : Fail(Usage);
+        }
 
         if (args.Length > 0 && args[0] == "--check-placement")
             return args.Length > 1 ? CheckPlacement(args.Skip(1).SelectMany(Expand).ToList()) : Fail(Usage);
@@ -86,6 +102,67 @@ internal static class Program
             }
         }
         return failures == 0 ? 0 : 1;
+    }
+
+    private static SolutionFile ReadAny(string file) =>
+        file.EndsWith(".solution", StringComparison.OrdinalIgnoreCase)
+            ? SolutionFile.Read(File.ReadAllBytes(file))
+            : SolutionParser.Parse(File.ReadAllText(file, Encoding.UTF8));
+
+    private static int ToNetlist(string input, string output)
+    {
+        try
+        {
+            string text = NetlistWriter.Format(ReadAny(input));
+            if (output == null)
+            {
+                Console.Write(text);
+                return 0;
+            }
+            File.WriteAllText(output, text, new UTF8Encoding(false));
+            Console.WriteLine($"Wrote {output}");
+            return 0;
+        }
+        catch (Exception e) when (e is InvalidDataException || e is EndOfStreamException || e is IOException || e is SolutionFormatException)
+        {
+            Console.Error.WriteLine($"{input}: {e.Message}");
+            return 1;
+        }
+    }
+
+    private static int CompileNetlist(string input, string output, bool strict, bool optimise)
+    {
+        if (!output.EndsWith(".solution", StringComparison.OrdinalIgnoreCase))
+            return Fail("The output file must end in .solution");
+        NetlistResult result;
+        try
+        {
+            result = NetlistCompiler.Compile(NetlistParser.Parse(File.ReadAllText(input, Encoding.UTF8)), new NetlistOptions { Strict = strict, Optimise = optimise });
+        }
+        catch (Exception e) when (e is NetlistException || e is IOException)
+        {
+            Console.Error.WriteLine($"{input}: {e.Message}");
+            return 1;
+        }
+        foreach (string warning in result.Warnings)
+            Console.Error.WriteLine($"{input}: warning: {warning}");
+
+        try
+        {
+            byte[] bytes = result.Solution.Write();
+            using var stream = new FileStream(output, FileMode.CreateNew, FileAccess.Write);
+            stream.Write(bytes, 0, bytes.Length);
+        }
+        catch (IOException e)
+        {
+            Console.Error.WriteLine($"{output}: {e.Message}");
+            return 1;
+        }
+        Console.WriteLine($"compiled {Path.GetFileName(input)}: {result.Solution.Modules.Count} modules, {result.Solution.Wires.Count} wires");
+        foreach (string line in result.Report)
+            Console.WriteLine("  " + line);
+        Console.WriteLine($"Wrote {output}");
+        return 0;
     }
 
     private static int Export(string solutionPath, string textPath)
@@ -174,6 +251,7 @@ internal static class Program
         {
             problems.Add("the text form can't be read back: " + e.Message);
         }
+        problems.AddRange(NetlistWriter.CheckRoundTrip(solution));
 
         string name = Path.GetFileName(file);
         if (problems.Count == 0)

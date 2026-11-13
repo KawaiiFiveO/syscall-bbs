@@ -35,8 +35,9 @@ internal static class DesktopPrograms
 
     // Window base and desktop.
     private static Type _base, _maybeBase;
-    private static MethodInfo _title, _size, _palette, _update, _opened, _closed;
-    private static ConstructorInfo _baseCtor, _vector2Ctor;
+    private static MethodInfo _title, _size, _palette, _update, _opened, _closed, _menu;
+    private static ConstructorInfo _baseCtor, _vector2Ctor, _menuItemCtor, _menuSeparatorCtor;
+    private static Type _menuItemType, _noShortcut;
     private static MethodInfo _getDesktop, _openWindow, _drawIcon, _desktopUpdate;
     private static object _iconColor, _themePalette;
     private static Func<object> _makePalette;
@@ -46,10 +47,13 @@ internal static class DesktopPrograms
     private static Action<int> _clear;
     private static Action<float, float, float, float, int> _fill;
     private static Action<char, float, float, object, int> _drawChar;
-    private static Func<object, char, float> _glyphWidth;
-    private static Func<object> _font, _gridFont;
-    private static object _fontValue;
-    private static readonly Dictionary<char, float> GlyphWidths = new();
+    private static Func<object, char, float> _glyphWidth, _glyphHeight;
+    private static Func<object> _font, _fontSet;
+    private static Func<TextFont, object> _gridFont;
+    private static readonly Dictionary<TextFont, Face> Faces = new();
+    private static readonly Dictionary<(TextFont, char), float> GlyphWidths = new();
+    private static readonly System.Text.Encoding CodePage437 = System.Text.Encoding.GetEncoding(437,
+        new System.Text.EncoderReplacementFallback("?"), new System.Text.DecoderReplacementFallback("?"));
 
     // Input.
     private static Func<List<char>> _typedChars;
@@ -143,6 +147,17 @@ internal static class DesktopPrograms
         _palette = CodeShape.Single(abstracts.Where(m => m.ReturnType.GetConstructor(new[] { texture }) != null), "abstract window palette");
         _update = CodeShape.Single(abstracts.Where(m => m.ReturnType == typeof(void) && m.GetParameters().Length == 0), "abstract window update");
 
+        // The menu: a virtual returning an array of an abstract item type, whose nested kinds are an
+        // item (label, Maybe<Key> shortcut, enabled, action) and a separator. A window with a menu
+        // has a taller frame and a minimize button.
+        _noShortcut = CodeShape.RequireType(game, "Maybe`1").MakeGenericType(CodeShape.RequireType(game, "Key"));
+        _menu = CodeShape.Single(_base.GetMethods(CodeShape.AllDeclared).Where(m => m.IsVirtual && !m.IsAbstract && m.GetParameters().Length == 0 &&
+            m.ReturnType.IsArray && m.ReturnType.GetElementType().IsAbstract && m.ReturnType.GetElementType().GetNestedTypes().Length == 2), "window menu");
+        _menuItemType = _menu.ReturnType.GetElementType();
+        Type[] kinds = _menuItemType.GetNestedTypes().Where(t => _menuItemType.IsAssignableFrom(t)).ToArray();
+        _menuItemCtor = CodeShape.Single(kinds.Select(t => t.GetConstructor(new[] { typeof(string), _noShortcut, typeof(bool), typeof(Action) })).Where(c => c != null), "menu item constructor");
+        _menuSeparatorCtor = CodeShape.Single(kinds.Where(t => t.GetConstructors().Length == 1).Select(t => t.GetConstructor(Type.EmptyTypes)).Where(c => c != null), "menu separator constructor");
+
         // Borrow the Organizer's palette: its constructor builds one from a texture reached by a
         // static getter and a chain of field reads.
         ConstructorInfo paletteCtor = _palette.ReturnType.GetConstructor(new[] { texture });
@@ -226,6 +241,7 @@ internal static class DesktopPrograms
         if (fonts == null || !fonts.IsStatic || fonts.ReturnType != fontField.DeclaringType || fonts.GetParameters().Length != 0)
             throw new ShapeMismatchException("desktop font isn't read from a static font set");
         _font = () => fontField.GetValue(fonts.Invoke(null, null));
+        _fontSet = () => fonts.Invoke(null, null);
 
         // The icon overload draws at position + (-51, 7) + the texture's offset, and hit-tests the
         // texture's size: the only two Vector2 fields of Texture it reads.
@@ -277,13 +293,33 @@ internal static class DesktopPrograms
             m.DeclaringType.IsAssignableFrom(gridFont) && m.GetParameters().Length == 1), "glyph lookup in terminal update");
         Type glyphKey = glyph.GetParameters()[0].ParameterType;
         MemberInfo glyphWidth = (MemberInfo)glyphInfo.GetField("Width") ?? glyphInfo.GetProperty("Width") ?? throw new ShapeMismatchException("FontGlyphInfo.Width not found");
+        MemberInfo glyphHeight = (MemberInfo)glyphInfo.GetField("Height") ?? glyphInfo.GetProperty("Height") ?? throw new ShapeMismatchException("FontGlyphInfo.Height not found");
         int variantAt = CodeShape.Single(Enumerable.Range(0, il.Count - 2).Where(i => il[i].opcode == OpCodes.Ldfld && il[i].operand is FieldInfo f &&
             f.DeclaringType == fontType && f.FieldType.IsGenericType && f.FieldType.GetGenericTypeDefinition() == typeof(Dictionary<,>) &&
             f.FieldType.GetGenericArguments()[1] == gridFont && Constant(il[i + 1]) != null &&
             il[i + 2].operand is MethodInfo m && m.Name == "get_Item"), "terminal font variant read from the font family");
         var variants = (FieldInfo)il[variantAt].operand;
         object variant = Enum.ToObject(variants.FieldType.GetGenericArguments()[0], Constant(il[variantAt + 1]).Value);
-        _gridFont = () => ((System.Collections.IDictionary)variants.GetValue(_font()))[variant];
+        // TextFont.Bold is the terminal's variant. TextFont.Regular is variant 0, the family's first
+        // and thinnest face (system_regular; the terminal's is system_bold). Mono and Cga are the
+        // font set's two fonts cut from a 16x16 grid image (font_cpmono, 9 wide; font_cga, 8 wide):
+        // the only ones whose glyphs have a negative height.
+        object regular = Enum.ToObject(variants.FieldType.GetGenericArguments()[0], 0);
+        _gridFont = f =>
+        {
+            if (f == TextFont.Mono || f == TextFont.Cga)
+            {
+                object set = _fontSet();
+                int width = f == TextFont.Mono ? 9 : 8;
+                return CodeShape.Single(set.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    .Where(field => field.FieldType == fontType).Select(field => field.GetValue(set)).Where(family => family != null)
+                    .Select(family => ((System.Collections.IDictionary)variants.GetValue(family))[regular]).Where(font => font != null).Distinct()
+                    .Where(font => _glyphHeight(font, 'M') < 0 && _glyphWidth(font, 'M') == width), $"{width}-pixel grid font in the font set");
+            }
+            var desktopFamily = (System.Collections.IDictionary)variants.GetValue(_font());
+            object key = f == TextFont.Regular ? regular : variant;
+            return desktopFamily.Contains(key) ? desktopFamily[key] : desktopFamily[variant];
+        };
 
         ParameterExpression rgb = Expression.Parameter(typeof(int), "rgb");
         ParameterExpression x = Expression.Parameter(typeof(float), "x"), y = Expression.Parameter(typeof(float), "y");
@@ -297,6 +333,8 @@ internal static class DesktopPrograms
             Expression.Call(drawChar, c, Expression.New(_vector2Ctor, x, y), Expression.Convert(font, gridFont), colorOf, Expression.Constant(false)), c, x, y, font, rgb).Compile();
         _glyphWidth = Expression.Lambda<Func<object, char, float>>(Expression.Convert(
             Expression.MakeMemberAccess(Expression.Call(Expression.Convert(font, glyph.DeclaringType), glyph, Expression.Convert(c, glyphKey)), glyphWidth), typeof(float)), font, c).Compile();
+        _glyphHeight = Expression.Lambda<Func<object, char, float>>(Expression.Convert(
+            Expression.MakeMemberAccess(Expression.Call(Expression.Convert(font, glyph.DeclaringType), glyph, Expression.Convert(c, glyphKey)), glyphHeight), typeof(float)), font, c).Compile();
     }
 
     private static int? Constant(CodeInstruction i)
@@ -427,6 +465,8 @@ internal static class DesktopPrograms
         Override(tb, _update, nameof(ProgramWindowCalls.Update));
         Override(tb, _opened, nameof(ProgramWindowCalls.Opened));
         Override(tb, _closed, nameof(ProgramWindowCalls.Closed));
+        if (registration.Program is IProgramMenu)
+            Override(tb, _menu, nameof(ProgramWindowCalls.Menu));
         return tb.CreateType();
     }
 
@@ -508,7 +548,7 @@ internal static class DesktopPrograms
         try
         {
             int columns = Math.Max(1, Math.Min(registration.Program.Columns, TextScreen.MaxColumns));
-            int rows = Math.Max(1, Math.Min(registration.Program.Rows, TextScreen.MaxRows));
+            int rows = Math.Max(1, Math.Min(registration.Program.Rows, registration.Program is IProgramMenu ? TextScreen.MaxRowsWithMenu : TextScreen.MaxRows));
             object window = Activator.CreateInstance(registration.WindowType);
             Sessions.Add(window, new Session(registration, new TextScreen(columns, rows)));
             _openWindow.Invoke(_getDesktop.Invoke(null, null), new[] { window, Activator.CreateInstance(_maybeBase) });
@@ -544,6 +584,44 @@ internal static class DesktopPrograms
     }
 
     internal static object Palette(object self) => _themePalette ??= _makePalette();
+
+    // Read several times a frame by the desktop. Never empty, because an empty menu would give the
+    // window the short frame it wasn't sized for.
+    internal static object Menu(object self)
+    {
+        Session session = SessionOf(self);
+        IReadOnlyList<ProgramMenuItem> items = null;
+        if (!session.Failed)
+        {
+            try
+            {
+                items = ((IProgramMenu)session.Registration.Program).MenuItems;
+            }
+            catch (Exception e)
+            {
+                session.Fail("MenuItems", e);
+            }
+        }
+        var menu = new List<object>();
+        foreach (ProgramMenuItem item in items ?? Array.Empty<ProgramMenuItem>())
+        {
+            if (item == null)
+                continue;
+            if (item.IsSeparator)
+            {
+                menu.Add(_menuSeparatorCtor.Invoke(null));
+                continue;
+            }
+            Action run = () => session.Call("menu item " + item.Label, item.Action);
+            menu.Add(_menuItemCtor.Invoke(new[] { item.Label, Activator.CreateInstance(_noShortcut), item.Enabled && !session.Failed, run }));
+        }
+        if (menu.Count == 0)
+            menu.Add(_menuSeparatorCtor.Invoke(null));
+        Array result = Array.CreateInstance(_menuItemType, menu.Count);
+        for (int i = 0; i < menu.Count; i++)
+            result.SetValue(menu[i], i);
+        return result;
+    }
 
     internal static void Opened(object self)
     {
@@ -618,7 +696,7 @@ internal static class DesktopPrograms
 
     private static void Draw(TextScreen screen, bool cursorOn)
     {
-        _fontValue ??= _gridFont();
+        Face face = FaceFor(screen.Font);
         int background = screen.Background.Rgb;
         _clear(background);
         bool cursor = screen.CursorVisible && cursorOn;
@@ -641,11 +719,105 @@ internal static class DesktopPrograms
                 char c = screen.GetChar(col, row);
                 if (c == ' ')
                     continue;
-                if (!GlyphWidths.TryGetValue(c, out float width))
-                    GlyphWidths[c] = width = _glyphWidth(_fontValue, c);
+                (Face drawn, char glyph, float width) = Glyph(face, c);
                 if (width > 0f)
-                    _drawChar(c, col * CellW + (float)Math.Ceiling((CellW - width) / 2f), y + 3, _fontValue, Fore(screen, col, row, cursor));
+                    _drawChar(glyph, col * CellW + (float)Math.Ceiling((CellW - width) / 2f), y + drawn.Raise, drawn.Font, Fore(screen, col, row, cursor));
             }
+        }
+    }
+
+    // The desktop font's < and > are tall chevrons from the game's terminal look, not text.
+    private const string DesktopFontReplaced = "<>";
+
+    /// <summary>
+    /// The face, glyph and width to draw a character with. The desktop font's faces lack some
+    /// ASCII (= @ $ _ { } | ~) and accented letters, and Mono lacks everything past ASCII; such
+    /// characters, and the desktop font's chevron &lt; and &gt;, come from Mono, then CGA, and anything
+    /// none of them has shows as Mono's '?'.
+    /// </summary>
+    private static (Face Face, char Glyph, float Width) Glyph(Face face, char c)
+    {
+        char glyph = face.Map(c);
+        float width = GlyphWidth(face, glyph);
+        bool desktopFont = face.Kind == TextFont.Bold || face.Kind == TextFont.Regular;
+        bool missing = width <= 0f || glyph == '?' && c != '?';
+        if (!missing && !(desktopFont && DesktopFontReplaced.IndexOf(c) >= 0))
+            return (face, glyph, width);
+        foreach (TextFont fallback in new[] { TextFont.Mono, TextFont.Cga })
+        {
+            Face other = FaceFor(fallback);
+            if (other.Kind != fallback || other == face)
+                continue;
+            char g = other.Map(c);
+            float w = GlyphWidth(other, g);
+            if (w > 0f && (g != '?' || c == '?'))
+                return (other, g, w);
+        }
+        Face mono = FaceFor(TextFont.Mono);
+        return mono.Kind == TextFont.Mono ? (mono, '?', GlyphWidth(mono, '?')) : (face, glyph, width);
+    }
+
+    private static float GlyphWidth(Face face, char glyph)
+    {
+        if (!GlyphWidths.TryGetValue((face.Kind, glyph), out float width))
+            GlyphWidths[(face.Kind, glyph)] = width = _glyphWidth(face.Font, glyph);
+        return width;
+    }
+
+    private static Face FaceFor(TextFont kind)
+    {
+        if (Faces.TryGetValue(kind, out Face face))
+            return face;
+        try
+        {
+            object font = _gridFont(kind);
+            float height = _glyphHeight(font, 'M');
+            // A grid font's position is the top of its cell, drawn downward: centre the cell in the
+            // row. The desktop font's position is near the baseline, 3 px above the row's bottom.
+            int raise = height < 0 ? (int)Math.Ceiling((CellH - height) / 2f) : 3;
+            face = new Face(kind, font, raise);
+        }
+        catch (Exception e) when (kind != TextFont.Bold)
+        {
+            Log.Warn($"Programs: font {kind} unavailable, using Bold: {Unwrap(e).Message}");
+            face = FaceFor(TextFont.Bold);
+        }
+        Faces[kind] = face;
+        return face;
+    }
+
+    private sealed class Face
+    {
+        private readonly Dictionary<char, char> _map = new();
+
+        public Face(TextFont kind, object font, int raise)
+        {
+            Kind = kind;
+            Font = font;
+            Raise = raise;
+        }
+
+        public TextFont Kind { get; }
+        public object Font { get; }
+        public int Raise { get; }
+
+        /// <summary>The glyph to draw for a character: code page 437 for Cga, ASCII for Mono.</summary>
+        public char Map(char c)
+        {
+            if (c < 127 || Kind == TextFont.Bold || Kind == TextFont.Regular)
+                return c;
+            if (_map.TryGetValue(c, out char mapped))
+                return mapped;
+            if (Kind == TextFont.Cga)
+            {
+                mapped = (char)CodePage437.GetBytes(new[] { c })[0];
+            }
+            else
+            {
+                string folded = c.ToString().Normalize(System.Text.NormalizationForm.FormD);
+                mapped = folded.Length > 0 && folded[0] < 127 ? folded[0] : '?';
+            }
+            return _map[c] = mapped;
         }
     }
 
@@ -735,6 +907,7 @@ public static class ProgramWindowCalls
     public static object Title(object self) => DesktopPrograms.Title(self);
     public static object Size(object self) => DesktopPrograms.Size(self);
     public static object Palette(object self) => DesktopPrograms.Palette(self);
+    public static object Menu(object self) => DesktopPrograms.Menu(self);
     public static void Update(object self) => DesktopPrograms.Update(self);
     public static void Opened(object self) => DesktopPrograms.Opened(self);
     public static void Closed(object self) => DesktopPrograms.Closed(self);

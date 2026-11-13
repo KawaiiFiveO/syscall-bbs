@@ -54,12 +54,18 @@ A `failed` result has only `file`, `status` and `error`.
 
 ```powershell
 tools\fcedit.ps1 wine-oclock-2            # solution file name or .solution path
+tools\fcedit.ps1 wine-oclock-2 -Netlist   # the same, as a netlist
 tools\fcedit.ps1 my-build.txt             # text file
-tools\fcedit.ps1 my-build.txt -Once       # check and apply once, then exit
+tools\fcedit.ps1 my-build.fcn             # netlist
+tools\fcedit.ps1 my-build.fcn -Once       # check and apply once, then exit
+tools\fcedit.ps1 my-build.fcn -Run        # also run each applied version and print its score
 ```
 
-* A solution is exported to `mods\FoodCourtTools\text\` and opened in an editor. A text file is opened as is.
+* A solution is exported to `mods\FoodCourtTools\text\` and opened in an editor. A text or netlist file is opened as is.
 * Each save is checked. Problems are printed with line numbers and nothing is applied. A valid file replaces the solution in the game.
+* A netlist (`.fcn`, see `specs/food-court-netlist.md`) is compiled on every save, and its cost report is printed: floor and logic cost, functions, buffers added and what the optimiser saved. `-Strict` and `-NoOptimise` pass `--strict` and `-O0` to the compiler.
+* `-Run` runs each applied version in the game and prints its score, such as `Score: 10T 75k 37S 28W`. S is the sum over orders of each order's ticks minus one; W is the number of wires.
+* A change made in the game rewrites a text file that has no unapplied edits. A netlist is never rewritten, because that would lose its names: the game's version is written next to it as `<name>.game.fcn`.
 * If no solution has the text file's name, a new solution is created.
 * If the puzzle is running, the edit waits until it stops.
 * Each edit is one undo step. **Ctrl+Z** in the puzzle screen reverts it.
@@ -83,6 +89,24 @@ To turn waveforms off, create `mods\FoodCourtTools\config.ini` containing:
 
 ```ini
 Waveforms = false
+```
+
+## Playback speeds
+
+The play/fast button (**Q**) has extra speeds between play and fast-forward. While fast-forwarding, each press moves to the next speed. The button is disabled at the top speed, which is the game's own fast-forward.
+
+| Speed | Ticks per second |
+|---|---|
+| Play | 1.5 |
+| Added speeds (default) | 3, 6, 12 |
+| Fast-forward | 20 |
+
+To slow down, press step (**W**), then **Q** to play again.
+
+Set the added speeds in `mods\FoodCourtTools\config.ini`, in ticks per second. Values outside 1.5–20 are ignored. An empty value turns the extra speeds off.
+
+```ini
+PlaybackSpeeds = 3, 6, 12
 ```
 
 ## Limitations

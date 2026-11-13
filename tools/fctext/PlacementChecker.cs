@@ -9,21 +9,21 @@ namespace LastCallBBS.FoodCourt;
 /// </summary>
 public static class PlacementChecker
 {
-    private const int FloorWidth = 6, FloorHeight = 7, RackWidth = 11, RackHeight = 3;
+    internal const int FloorWidth = 6, FloorHeight = 7, RackWidth = 11, RackHeight = 3;
     private static readonly (int X, int Y)[] Front = { (1, 0), (0, 1), (-1, 0), (0, -1) };
 
-    private static readonly HashSet<string> FloorOnly = new()
+    internal static readonly HashSet<string> FloorOnly = new()
     {
         "Conveyor", "EnroberInput", "Output", "Trash", "SlicerDoubleVertical", "SlicerDoubleHorizontal", "SlicerTriple",
         "Spinner", "Roller", "Docker", "Flattener",
     };
 
-    private static readonly HashSet<string> RackOnly = new() { "MixerSimple", "MixerComplex", "Sequencer", "CounterSmall", "CounterLarge" };
+    internal static readonly HashSet<string> RackOnly = new() { "MixerSimple", "MixerComplex", "Sequencer", "CounterSmall", "CounterLarge" };
     private static readonly HashSet<string> PumpTargets = new() { "Conveyor", "Router", "Sorter" };
 
     private static bool IsPump(string name) => name.StartsWith("LiquidInput");
 
-    private static int RackSpan(string name) =>
+    internal static int RackSpan(string name) =>
         name is "Sequencer" or "CounterLarge" or "Animatronic" || name.StartsWith("ScannerFor") || name.StartsWith("PrimaryInputFor") || name.StartsWith("FreezerInput") ? 2 : 1;
 
     private static int FloorSpan(string name) => name == "Output" ? 2 : 1;

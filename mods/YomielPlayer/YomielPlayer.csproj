@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>YomielPlayer</AssemblyName>
+    <RootNamespace>LastCallBBS.Mods.YomielPlayer</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- .NET Framework 4.7.2 has netstandard.dll built in; don't copy facade DLLs into the mod's folder. -->
+    <ImplicitlyExpandNETStandardFacades>false</ImplicitlyExpandNETStandardFacades>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\modapi\LastCallBBS.ModAPI.csproj" Private="false" />
+    <!-- Yomiel.dll ships in the mod's folder. -->
+    <ProjectReference Include="..\..\yomiel\Yomiel\Yomiel.csproj" />
+  </ItemGroup>
+</Project>

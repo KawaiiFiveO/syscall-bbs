@@ -60,6 +60,20 @@ public sealed class FoodCourtToolsMod : IMod
             context.ReportProblem("live editing unavailable: " + e.Message);
         }
 
+        List<float> speeds = PlaybackSpeeds.Parse(context.Config.GetString("PlaybackSpeeds", "3, 6, 12"), _log.Warn);
+        if (speeds.Count > 0)
+        {
+            try
+            {
+                float[] used = PlaybackSpeeds.Apply(context.Game, context.Harmony, speeds);
+                _log.Info("Fast-forward speeds: " + string.Join(", ", used.Select(s => s.ToString(System.Globalization.CultureInfo.InvariantCulture))) + " ticks/s");
+            }
+            catch (ShapeMismatchException e)
+            {
+                context.ReportProblem("extra playback speeds unavailable: " + e.Message);
+            }
+        }
+
         _levels = Path.Combine(context.Directory, "levels");
         _edits = Path.Combine(context.Directory, "edits");
         _requests = Path.Combine(context.Directory, "requests");

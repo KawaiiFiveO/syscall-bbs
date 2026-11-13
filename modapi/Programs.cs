@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace LastCallBBS.ModAPI;
@@ -30,6 +31,41 @@ public interface IDesktopProgram
 
     /// <summary>The window closed. The screen isn't drawn again.</summary>
     void Closed(ProgramWindow window);
+}
+
+/// <summary>
+/// Optional, for an <see cref="IDesktopProgram"/>: the window gets a menu in its title bar and a
+/// minimize button. The window's frame is 16 pixels taller, so the grid fits at most
+/// <see cref="TextScreen.MaxRowsWithMenu"/> rows.
+/// </summary>
+public interface IProgramMenu
+{
+    /// <summary>The menu's items, read every frame while the window is open. Actions run on the game's main thread.</summary>
+    IReadOnlyList<ProgramMenuItem> MenuItems { get; }
+}
+
+/// <summary>An item in a program's menu, or a separator.</summary>
+public sealed class ProgramMenuItem
+{
+    public ProgramMenuItem(string label, Action action, bool enabled = true)
+    {
+        Label = label ?? throw new ArgumentNullException(nameof(label));
+        Action = action ?? throw new ArgumentNullException(nameof(action));
+        Enabled = enabled;
+    }
+
+    private ProgramMenuItem() { }
+
+    /// <summary>A line between groups of items.</summary>
+    public static ProgramMenuItem Separator { get; } = new() { IsSeparator = true };
+
+    public string Label { get; }
+    public Action Action { get; }
+
+    /// <summary>A disabled item is shown greyed out and does nothing.</summary>
+    public bool Enabled { get; }
+
+    public bool IsSeparator { get; private set; }
 }
 
 /// <summary>Implemented by the loader. Mods use <see cref="ModPrograms"/> instead.</summary>
@@ -113,6 +149,9 @@ public sealed class TextScreen
     public const int MaxColumns = 106;
     public const int MaxRows = 34;
 
+    /// <summary>The most rows for a program with a menu (<see cref="IProgramMenu"/>), whose frame is taller.</summary>
+    public const int MaxRowsWithMenu = 33;
+
     private readonly char[] _chars;
     private readonly TextColor[] _fore;
     private readonly TextColor[] _back;
@@ -143,6 +182,9 @@ public sealed class TextScreen
 
     /// <summary>Shows a blinking block cursor at <see cref="CursorColumn"/>, <see cref="CursorRow"/>.</summary>
     public bool CursorVisible { get; set; }
+
+    /// <summary>The face of the desktop font the grid is drawn in.</summary>
+    public TextFont Font { get; set; } = TextFont.Bold;
 
     public char GetChar(int column, int row) => Inside(column, row) ? _chars[row * Columns + column] : ' ';
     public TextColor GetForeground(int column, int row) => Inside(column, row) ? _fore[row * Columns + column] : Foreground;
@@ -221,6 +263,22 @@ public sealed class TextScreen
     }
 
     private bool Inside(int column, int row) => column >= 0 && row >= 0 && column < Columns && row < Rows;
+}
+
+/// <summary>Faces of the desktop font for a <see cref="TextScreen"/>.</summary>
+public enum TextFont
+{
+    /// <summary>The terminal's face.</summary>
+    Bold,
+
+    /// <summary>A thinner face of the same font.</summary>
+    Regular,
+
+    /// <summary>The game's monospaced font (font_cpmono): thin, ASCII only. Other characters lose their accents or show as '?'.</summary>
+    Mono,
+
+    /// <summary>The game's IBM PC font (font_cga): 8x8, code page 437, with accented letters and box drawing.</summary>
+    Cga,
 }
 
 /// <summary>An opaque RGB colour.</summary>

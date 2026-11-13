@@ -2,20 +2,27 @@
 # it's checked, and if it's valid it replaces the solution in the game. The game must be running
 # through the mod loader, with FoodCourtTools installed.
 #
-#   tools\fcedit.ps1 <solution file or name, or text file> [-Editor <command>] [-NoEditor]
-#   tools\fcedit.ps1 <text file> -Once
+#   tools\fcedit.ps1 <solution file or name, or text or .fcn file> [-Netlist] [-Run] [-Editor <command>] [-NoEditor]
+#   tools\fcedit.ps1 <text or .fcn file> -Once [-Run]
 #
 # A solution (wine-oclock-2 or its .solution path) is exported to mods\FoodCourtTools\text\ and
-# opened in an editor. A text file is used as it is. If no solution has the text file's name, the
-# game makes a new one. -Once checks and applies the text file once, then exits; exit code 0 means
-# it was applied or is waiting for the puzzle screen.
+# opened in an editor, as text, or as a netlist with -Netlist. A text or .fcn file is used as it is.
+# If no solution has the file's name, the game makes a new one. -Once checks and applies the file
+# once, then exits; exit code 0 means it was applied or is waiting for the puzzle screen.
+#
+# A .fcn netlist is compiled on every save and its cost report printed (-Strict and -NoOptimise pass
+# --strict and -O0 to the compiler). -Run runs each applied version and prints its score.
 #
 # The edit is one undo step in the game: Ctrl+Z in the puzzle screen reverts it.
 param(
     [Parameter(Mandatory = $true, Position = 0)][string]$Path,
     [string]$Editor,
     [switch]$NoEditor,
-    [switch]$Once
+    [switch]$Once,
+    [switch]$Netlist,
+    [switch]$Run,
+    [switch]$Strict,
+    [switch]$NoOptimise
 )
 $ErrorActionPreference = "Stop"
 
@@ -73,14 +80,51 @@ function Write-Status([string]$message, [string]$color = "Gray") {
     Write-Host "[$(Get-Date -Format HH:mm:ss)] $message" -ForegroundColor $color
 }
 
+function Test-Netlist([string]$file) { return $file -like "*.fcn" }
+
 function Export-Text([string]$solutionFile, [string]$textFile) {
-    $result = Invoke-Fctext @($solutionFile, "-o", $textFile)
+    $arguments = if (Test-Netlist $textFile) { @("--to-netlist", $solutionFile, "-o", $textFile) } else { @($solutionFile, "-o", $textFile) }
+    $result = Invoke-Fctext $arguments
     if ($result.Code -ne 0) { throw "Could not export ${solutionFile}: $($result.Err.Trim())" }
+}
+
+# Compiles a netlist and prints its report. Returns the .solution path, or $null after printing the errors.
+function Test-NetlistFile([string]$netlistFile, [string]$candidate) {
+    $arguments = @("--compile", $netlistFile, $candidate)
+    if ($Strict) { $arguments += "--strict" }
+    if ($NoOptimise) { $arguments += "-O0" }
+    $compile = Invoke-Fctext $arguments
+    $messages = @($compile.Err.Trim() -split "`r?`n" | Where-Object { $_ } | ForEach-Object { $_.Replace($netlistFile + ': ', '') })
+    if ($compile.Code -ne 0) {
+        Write-Status "Not applied. The netlist has problems:" Red
+        foreach ($line in $messages) { Write-Host "  $line" }
+        return $null
+    }
+    foreach ($line in ($compile.Out.Trim() -split "`r?`n" | Where-Object { $_ -match '^  ' })) { Write-Host $line }
+    foreach ($line in $messages) { Write-Host "  $line" -ForegroundColor Yellow }
+    return $candidate
+}
+
+# Runs the game's version of the solution and prints T, cost, S (sum of order ticks minus one each) and W (wires).
+function Show-Score([string]$solutionFile) {
+    $output = & (Join-Path $PSScriptRoot "fcrun.ps1") $solutionFile -TimeoutSeconds 30 2>&1
+    $json = $output | Where-Object { $_ -like "*.json" } | Select-Object -First 1
+    if (-not $json -or -not (Test-Path $json)) { Write-Status "Couldn't run it: $($output -join ' ')" Yellow; return }
+    $result = Get-Content $json -Raw | ConvertFrom-Json
+    $wires = @((Invoke-Fctext @($solutionFile)).Out -split "`n" | Where-Object { $_ -match ' -> ' }).Count
+    if ($result.status -ne "ok") {
+        Write-Status "Ran it: $($result.status)$(if ($result.error) { ': ' + $result.error }), cost $($result.cost), W $wires" Red
+        return
+    }
+    $s = ($result.orderTicks | ForEach-Object { $_ - 1 } | Measure-Object -Sum).Sum
+    Write-Status "Score: $($result.ticks)T $($result.cost)k ${s}S ${wires}W (order ticks $($result.orderTicks -join ', '))" Cyan
 }
 
 # Checks the text and writes a .solution for it. Returns its path, or $null after printing the problems.
 function Test-Text([string]$textFile) {
     $candidate = Join-Path $work "$([guid]::NewGuid()).solution"
+    # The compiler applies the placement rules itself.
+    if (Test-Netlist $textFile) { return Test-NetlistFile $textFile $candidate }
     $import = Invoke-Fctext @("--import", $textFile, $candidate)
     if ($import.Code -ne 0) {
         Write-Status "Not applied. The text has problems:" Red
@@ -98,6 +142,9 @@ function Test-Text([string]$textFile) {
 }
 
 function Send-Edit([string]$candidate, [string]$target) {
+    # The game can report an edit applied before it has written the file, so -Run scores this copy.
+    $script:lastSent = Join-Path $work "$target.sent.solution"
+    Copy-Item -Force $candidate $script:lastSent
     $result = Join-Path $edits "$target.json"
     if (Test-Path $result) { Remove-Item $result }
     # The name ending in .tmp hides the file from the mod until it's complete.
@@ -120,10 +167,11 @@ if ($Path -like "*.solution" -or -not (Test-Path $Path -PathType Leaf)) {
     $target = [IO.Path]::GetFileNameWithoutExtension($solutionFile)
     $textDir = Join-Path $mod "text"
     New-Item -ItemType Directory -Force $textDir | Out-Null
-    $textFile = Join-Path $textDir "$target.txt"
-    if ($Once) { throw "-Once takes a text file." }
+    $extension = if ($Netlist) { ".fcn" } else { ".txt" }
+    $textFile = Join-Path $textDir "$target$extension"
+    if ($Once) { throw "-Once takes a text or .fcn file." }
     # Always start from the game's current version. Earlier text that differs is kept as a backup.
-    $fresh = Join-Path $work "$target.txt"
+    $fresh = Join-Path $work "$target$extension"
     Export-Text $solutionFile $fresh
     if ((Test-Path $textFile) -and (Get-Hash (Read-Bytes $textFile)) -ne (Get-Hash (Read-Bytes $fresh))) {
         Copy-Item -Force $textFile "$textFile.bak"
@@ -144,7 +192,11 @@ if ($Once) {
     while ((Get-Date) -lt $deadline) {
         $answer = Read-Result $resultFile
         if ($answer) {
-            if ($answer.status -eq "applied") { Write-Status "Applied to $($answer.file)." Green; exit 0 }
+            if ($answer.status -eq "applied") {
+                Write-Status "Applied to $($answer.file)." Green
+                if ($Run) { Show-Score $script:lastSent }
+                exit 0
+            }
             if ($answer.status -eq "waiting") { Write-Status "Waiting: $($answer.message). It applies when the puzzle is idle." Yellow; exit 0 }
             Write-Status "The game refused it: $($answer.message)" Red
             exit 1
@@ -206,6 +258,7 @@ while ($true) {
             $textSynced = $true
             $lastGame = Get-Hash (Read-Bytes $gameFile)
             $lastLayout = Get-Layout $gameFile
+            if ($Run) { Show-Score $script:lastSent }
         }
         elseif ($answer) {
             Write-Status "The game refused it: $($answer.message)" Red
@@ -226,7 +279,13 @@ while ($true) {
     $layout = Get-Layout $gameFile
     if ($null -eq $layout -or $layout -eq $lastLayout) { continue }
     $lastLayout = $layout
-    if ($textSynced) {
+    if (Test-Netlist $textFile) {
+        # Re-exporting would replace your names with generic ones, so the game's version goes next to it.
+        $mirror = [IO.Path]::ChangeExtension($textFile, ".game.fcn")
+        Export-Text $gameFile $mirror
+        Write-Status "Changed in the game. Its version is in $mirror; your netlist is unchanged." Yellow
+    }
+    elseif ($textSynced) {
         Export-Text $gameFile $textFile
         $lastText = Get-Hash (Read-Bytes $textFile)
         Write-Status "Changed in the game. The text file now matches it."

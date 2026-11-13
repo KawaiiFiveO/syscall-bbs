@@ -18,8 +18,10 @@ function Add-Mod([string]$mod, [string]$folder) {
     Build "$source\$mod.csproj"
     $target = Join-Path $stage "$folder\$mod"
     New-Item -ItemType Directory -Force $target | Out-Null
-    Copy-Item "$source\bin\Release\$mod.dll", "$source\mod.ini" $target
-    if (Test-Path "$source\config.ini") { Copy-Item "$source\config.ini" $target }
+    # The mod's DLLs, without the ones the launcher ships, plus its ini files and icons.
+    Get-ChildItem "$source\bin\Release" -Filter *.dll |
+        Where-Object { $_.Name -notin "0Harmony.dll", "LastCallBBS.ModAPI.dll" } | Copy-Item -Destination $target
+    Get-ChildItem $source -File | Where-Object { $_.Extension -in ".ini", ".png" } | Copy-Item -Destination $target
 }
 
 Build "$PSScriptRoot\LastCallBBS.Launcher.csproj"
@@ -34,6 +36,7 @@ Copy-Item "$PSScriptRoot\LastCallBBS.Launcher.ini" $files
 Add-Mod "SkipLoading" "mods"
 Add-Mod "HookLogger" "optional-mods"
 Add-Mod "FoodCourtTools" "optional-mods"
+Add-Mod "YomielPlayer" "optional-mods"
 
 Build "$repo\tools\fctext\fctext.csproj"
 $fctext = Join-Path $stage "tools\fctext\bin\Release\net472"

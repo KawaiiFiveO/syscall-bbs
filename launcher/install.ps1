@@ -6,7 +6,9 @@ param(
     # Also installs HookLogger, which prints every hook as it fires.
     [switch]$WithHookLogger,
     # Also installs FoodCourtTools, which runs Food Court solutions on demand.
-    [switch]$WithFoodCourtTools
+    [switch]$WithFoodCourtTools,
+    # Also installs Yomiel, a desktop program that plays Z-machine story files.
+    [switch]$WithYomiel
 )
 $ErrorActionPreference = "Stop"
 
@@ -36,14 +38,19 @@ Copy-Item (Join-Path $modSource "mod.ini") $modDir -Force
 $optional = @()
 if ($WithHookLogger) { $optional += "HookLogger" }
 if ($WithFoodCourtTools) { $optional += "FoodCourtTools" }
+if ($WithYomiel) { $optional += "YomielPlayer" }
 foreach ($name in $optional) {
     $source = Join-Path $PSScriptRoot "..\mods\$name"
     dotnet build "$source\$name.csproj" -c Release
     if ($LASTEXITCODE -ne 0) { throw "Build failed: $name" }
     $target = Join-Path $GameDir "mods\$name"
     New-Item -ItemType Directory -Force $target | Out-Null
-    Copy-Item (Join-Path $source "bin\Release\$name.dll") $target -Force
-    Copy-Item (Join-Path $source "mod.ini") $target -Force
+    # The mod's DLLs, without the ones the launcher ships. Existing settings are kept.
+    Get-ChildItem (Join-Path $source "bin\Release") -Filter *.dll |
+        Where-Object { $_.Name -notin "0Harmony.dll", "LastCallBBS.ModAPI.dll" } | Copy-Item -Destination $target -Force
+    Get-ChildItem $source -File | Where-Object { $_.Extension -eq ".png" -or $_.Name -eq "mod.ini" } | Copy-Item -Destination $target -Force
+    $config = Join-Path $source "config.ini"
+    if ((Test-Path $config) -and -not (Test-Path (Join-Path $target "config.ini"))) { Copy-Item $config $target }
 }
 
 # These settings used to live in the launcher's ini. Carry the values over once, then remove them there.

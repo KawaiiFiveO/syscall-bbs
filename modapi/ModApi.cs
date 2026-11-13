@@ -34,9 +34,10 @@ public sealed class ModContext
     private readonly Action<string> _reportProblem;
 
     public ModContext(string id, string name, string version, string directory, IModLog log, ModConfig config,
-        Assembly game, Harmony harmony, ModHooks hooks, ModTextures textures, ModPrograms programs, IReadOnlyCollection<string> scopes, Action<string> reportProblem)
+        Assembly game, Harmony harmony, ModHooks hooks, ModTextures textures, ModPrograms programs, ModSounds sounds, IReadOnlyCollection<string> scopes, Action<string> reportProblem)
     {
         Textures = textures;
+        Sounds = sounds;
         Programs = programs;
         Id = id;
         Name = name;
@@ -80,6 +81,9 @@ public sealed class ModContext
 
     /// <summary>Text programs on the desktop. Needs scope = programs (or full).</summary>
     public ModPrograms Programs { get; }
+
+    /// <summary>The game's sound effects. Available to every mod.</summary>
+    public ModSounds Sounds { get; }
 
     /// <summary>
     /// Reports that part of the mod couldn't be applied, while the rest stays loaded. The problem
