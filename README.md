@@ -30,14 +30,16 @@ Run `Install.cmd` and choose Uninstall. SysCall will be removed; saves are kept.
 
 To uninstall by hand, delete these from the game folder:
 
-* `Last Call BBS (Modded).exe`
-* `Last Call BBS (Modded).exe.config`
-* `0Harmony.dll`
-* `Mono.Cecil.dll`
-* `LastCallBBS.ModAPI.dll`
-* `LastCallBBS.Launcher.ini`
-* `LastCallBBS.Launcher.log`
-* `mods\`
+```
+Last Call BBS (Modded).exe
+Last Call BBS (Modded).exe.config
+0Harmony.dll
+Mono.Cecil.dll
+LastCallBBS.ModAPI.dll
+LastCallBBS.Launcher.ini
+LastCallBBS.Launcher.log
+mods\
+```
 
 ## Mods
 
