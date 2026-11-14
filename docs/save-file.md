@@ -2,8 +2,6 @@
 
 Last Call BBS keeps progress for the desktop and every program in one text file, `save.dat`.
 
-**Warning:** The game won't start if `save.dat` doesn't end with `<END OF FILE>`. Edit it only while the game is closed: the running game keeps its own copy and writes it back.
-
 ## Location
 
 `Documents/My Games/Last Call BBS/<user>/save.dat`, where `<user>` is `NonSteamUser` on GOG and the SteamID64 on Steam.
@@ -25,6 +23,7 @@ Do not remove this end-of-file indicator:
 - One `Key = Value` line per key, sorted by key. Lines end in CRLF.
 - Each line is split at its first `=`, and both sides are trimmed.
 - Missing keys take their default: `False`, `0`, or none.
+- The game won't start if `save.dat` doesn't end with `<END OF FILE>`.
 
 | Value type | Form |
 |---|---|
@@ -56,7 +55,7 @@ Do not remove this end-of-file indicator:
 | `Terminal.LastCallShutDown` | Flag | Story progress. |
 | `Terminal.WorldTimeAccessed` | Flag | Story progress. |
 | `Terminal.EquityFirstAccessed` | Flag | Story progress. |
-| `Terminal.Custom.<hash>` | Data | Text a custom server stored with `saveData`. `<hash>` is the .NET Framework `String.GetHashCode` of the script's text, so editing a script loses its data. |
+| `Terminal.Custom.<hash>` | Data | A string passed by a custom server to `saveData`. `<hash>` is the .NET Framework `String.GetHashCode` of the script's text. |
 
 | `<n>` | Program |
 |---|---|

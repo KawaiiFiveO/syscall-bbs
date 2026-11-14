@@ -1,6 +1,6 @@
 # Making mods
 
-A mod is a .NET Framework DLL in its own folder under `mods/`, with a `mod.ini`. `mods/Typewriter` and `mods/FoodCourtStats` in the source repository are complete examples.
+A mod is a .NET Framework DLL in its own folder under `mods/`, with a `mod.ini`. `mods/Typewriter` and `mods/FoodCourtStats` in the source repo are complete examples.
 
 ## Project
 
@@ -41,7 +41,7 @@ scope = terminal, story
 | `name` | no | Display name. Defaults to `id`. |
 | `version` | no | Defaults to `0.0.0`. |
 | `dll` | no | DLL file name in the mod's folder. Defaults to `<folder name>.dll`, or the folder's only DLL. |
-| `requires` | no | Comma-separated mod ids. The mod fails to load if one of them isn't installed or failed to load. |
+| `requires` | no | Comma-separated mod ids. The mod fails to load if they are not installed or failed to load. |
 | `after` | no | Comma-separated mod ids to load first, if they are installed. |
 
 Mods load in alphabetical order by folder name. `requires` and `after` override that order.
@@ -233,12 +233,12 @@ Colours are `TextColor`, created with `TextColor.FromRgb(0xRRGGBB)` or `new Text
 
 | Value | Font |
 |---|---|
-| `Bold` | The desktop font as the terminal draws it (`system_bold`). The default. |
+| `Bold` | The desktop font as the terminal draws it (`system_bold`). Default. |
 | `Regular` | The desktop font's thinner face (`system_regular`). |
 | `Mono` | The game's monospaced font (`font_cpmono`): thin, ASCII only. Accented letters lose their accents; other characters are drawn from `Cga`. |
 | `Cga` | The game's IBM PC font (`font_cga`): 8×8, code page 437, with accented letters and box drawing. Characters outside code page 437 show as `?`. |
 
-`Bold` and `Regular` are proportional, with each glyph centred in its cell. They lack `=`, `@`, `$`, `_`, `{`, `}`, `|`, `~` and accented letters, and draw `<` and `>` as tall chevrons; those characters are drawn from `Mono` instead, then `Cga`. A character no font has shows as `?`.
+`Bold` and `Regular` are proportional, with each glyph centred in its cell. They lack symbols and accented letters; those characters are drawn from `Mono` instead, then `Cga`. Characters with no fallback show as `?`.
 
 `KeyPress` members:
 
@@ -313,7 +313,7 @@ context.Harmony.Patch(target, transpiler: new HarmonyMethod(typeof(MyMod), nameo
 
 ### Reading the game's code
 
-`tools/decompile.ps1` in the source repository decompiles the game to C#, with its strings decrypted. Requires the .NET SDK and ilspycmd (`dotnet tool install -g ilspycmd`).
+`tools/decompile.ps1` in the source repo decompiles the game to C#, with strings decrypted. Requires the .NET SDK and ilspycmd (`dotnet tool install -g ilspycmd`).
 
 ```
 tools/decompile.ps1 -Out <folder> [-Game <game folder or exe>] [-Comments] [-NoAliases] [-IlSpyCmd <path>]
