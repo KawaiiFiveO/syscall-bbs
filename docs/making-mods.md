@@ -353,7 +353,7 @@ tools/strtool/bin/Release/net472/strtool.exe "<game>/Last Call BBS.exe" --all <f
 
 Mods with `scope = content` or `full` replace game files: `mods/<Name>/Content/<path>` is read instead of `Content/<path>`. A mod with only `content` scope needs no DLL.
 
-Most textures are packed `.tex` files. A `.tex` can be replaced as is, but there is no PNG to `.tex` converter. To add new images, see [Textures](#textures).
+Most textures are packed `.tex` files, which `textool` converts to and from PNG: see [Textures](textures.md). To add new images, see [Textures](#textures).
 
 ## Troubleshooting
 

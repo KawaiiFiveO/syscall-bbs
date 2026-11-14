@@ -47,9 +47,14 @@ New-Item -ItemType Directory -Force $fctext | Out-Null
 Copy-Item "$repo\tools\fctext\bin\Release\net472\fctext.exe", "$repo\tools\fctext\bin\Release\net472\fctext.exe.config" $fctext
 Copy-Item "$repo\tools\fcrun.ps1" (Join-Path $stage "tools")
 
+Build "$repo\tools\textool\textool.csproj"
+$textool = Join-Path $stage "tools\textool\bin\Release\net472"
+New-Item -ItemType Directory -Force $textool | Out-Null
+Copy-Item "$repo\tools\textool\bin\Release\net472\textool.exe", "$repo\tools\textool\bin\Release\net472\textool.exe.config" $textool
+
 Copy-Item "$PSScriptRoot\install-release.ps1", "$PSScriptRoot\InstallMenu.ps1", "$PSScriptRoot\FindGame.ps1", "$repo\README.md" $stage
 New-Item -ItemType Directory -Force (Join-Path $stage "docs") | Out-Null
-Copy-Item "$repo\docs\making-mods.md", "$repo\docs\food-court-format.md", "$repo\docs\food-court-netlist.md", "$repo\docs\save-file.md" (Join-Path $stage "docs")
+Copy-Item "$repo\docs\making-mods.md", "$repo\docs\textures.md","$repo\docs\food-court-format.md", "$repo\docs\food-court-netlist.md", "$repo\docs\save-file.md" (Join-Path $stage "docs")
 # Install.cmd: double-click it, or drop the game's folder (or mod folders) on it.
 $cmd = @(
     "@echo off",

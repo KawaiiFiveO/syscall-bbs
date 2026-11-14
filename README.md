@@ -81,6 +81,7 @@ Edit `LastCallBBS.Launcher.ini` in the game folder.
 ## Documentation
 
 * [Making mods](docs/making-mods.md)
+* [Textures](docs/textures.md)
 * [Food Court solution format](docs/food-court-format.md)
 * [Food Court netlist language](docs/food-court-netlist.md)
 * [Save file](docs/save-file.md)
