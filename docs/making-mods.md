@@ -148,7 +148,7 @@ string label = context.Config.GetString("Label", "Default");
 
 * Lines are `Key = Value`. Keys are case-insensitive.
 * Lines starting with `#` or `;` are comments.
-* `GetBool` accepts `true`, `false`, `yes`, `no`, `on`, `off`, `1` and `0`. An unrecognised value logs a warning and returns the fallback.
+* `GetBool` accepts `true`, `false`, `yes`, `no`, `on`, `off`, `1` and `0`. An unrecognized value logs a warning and returns the fallback.
 * `Contains(key)` checks whether a key is set.
 
 ## Textures
@@ -173,7 +173,7 @@ public void OnLoad(ModContext context) =>
     context.Programs.Add("Notes", context.Textures.Load("icon.png"), new NotesProgram());
 ```
 
-* The icon is drawn at its own size, centred over its label. The game's icons are about 64×80, at most 100×100.
+* The icon is drawn at its own size, centered over its label. The game's icons are about 64×80, at most 100×100.
 * Program icons fill a second column next to the game's, top to bottom, in load order.
 * Each program has at most one window.
 
@@ -213,21 +213,21 @@ public IReadOnlyList<ProgramMenuItem> MenuItems => new[]
 |---|---|
 | `Put(column, row, c[, fg, bg])` | Writes one character. |
 | `Write(column, row, text[, fg, bg])` | Writes text on one row, without wrapping. Returns the column after the text. |
-| `Fill(column, row, width, height[, c])` | Fills a rectangle with `c` (default space) in the current colours. |
-| `Clear()` | Blanks the grid in the current colours and moves the cursor to the top left. |
+| `Fill(column, row, width, height[, c])` | Fills a rectangle with `c` (default space) in the current colors. |
+| `Clear()` | Blanks the grid in the current colors and moves the cursor to the top left. |
 | `Scroll(top, bottom, lines)` | Moves rows `top` to `bottom - 1` up by `lines`, or down if negative. Uncovered rows are blanked. |
 | `GetChar`, `GetForeground`, `GetBackground(column, row)` | Reads a cell. |
 
 | Property | Value |
 |---|---|
 | `Columns`, `Rows` | Grid size. |
-| `Foreground` | Colour for writes that don't specify one. Default `0xD8D8D8`. |
+| `Foreground` | Color for writes that don't specify one. Default `0xD8D8D8`. |
 | `Background` | Background for writes that don't specify one, and the window background. Default `0x101418`. |
 | `CursorColumn`, `CursorRow` | Cursor position. |
 | `CursorVisible` | Shows a blinking block cursor. |
 | `Font` | The font the grid is drawn in. See below. |
 
-Colours are `TextColor`, created with `TextColor.FromRgb(0xRRGGBB)` or `new TextColor(r, g, b)`.
+Colors are `TextColor`, created with `TextColor.FromRgb(0xRRGGBB)` or `new TextColor(r, g, b)`.
 
 `TextFont` values:
 
@@ -238,7 +238,7 @@ Colours are `TextColor`, created with `TextColor.FromRgb(0xRRGGBB)` or `new Text
 | `Mono` | The game's monospaced font (`font_cpmono`): thin, ASCII only. Accented letters lose their accents; other characters are drawn from `Cga`. |
 | `Cga` | The game's IBM PC font (`font_cga`): 8×8, code page 437, with accented letters and box drawing. Characters outside code page 437 show as `?`. |
 
-`Bold` and `Regular` are proportional, with each glyph centred in its cell. They lack symbols and accented letters; those characters are drawn from `Mono` instead, then `Cga`. Characters with no fallback show as `?`.
+`Bold` and `Regular` are proportional, with each glyph centered in its cell. They lack symbols and accented letters; those characters are drawn from `Mono` instead, then `Cga`. Characters with no fallback show as `?`.
 
 `KeyPress` members:
 

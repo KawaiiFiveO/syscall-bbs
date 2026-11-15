@@ -12,7 +12,7 @@
 |---|---|
 | `fctext <file.solution or folder>...` | Prints solutions as text. |
 | `fctext <file.solution> -o <file.txt>` | Writes one solution to a UTF-8 text file. |
-| `fctext --check <file.solution or folder>...` | Checks that each file is fully understood: rewriting it gives identical bytes, it passes validation, a solved file's saved cost matches the catalogue, and text conversion round-trips. |
+| `fctext --check <file.solution or folder>...` | Checks that each file is fully understood: rewriting it gives identical bytes, it passes validation, a solved file's saved cost matches the catalog, and text conversion round-trips. |
 | `fctext --import <text file> <new.solution>` | Writes a new solution from text, after validation. The result is unsolved with a cost of 0. |
 | `fctext --compile <file.fcn> <new.solution>` | Writes a new solution from a netlist. See [Food Court netlist language](food-court-netlist.md). |
 | `fctext --to-netlist <file.solution or text file> [-o <file.fcn>]` | Converts a solution to a netlist. |
@@ -118,9 +118,9 @@ The output socket comes first. A socket is its name, such as `INPUT_A`, or `#` a
 ## Sockets
 
 * Socket names are the game's labels in uppercase, with other characters replaced by `_`.
-* Unlabelled sockets are `IN1`, `IN2` and so on.
+* Unlabeled sockets are `IN1`, `IN2` and so on.
 * A scanner's first socket is `START`.
 
-## Module catalogue
+## Module catalog
 
 `tools/fctext/ModuleCatalog.cs` lists the 80 module types, generated from the game's module definitions.

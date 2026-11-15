@@ -31,7 +31,7 @@ Without `fcrun.ps1`: copy a `.solution` file into `mods/FoodCourtTools/requests/
 | `status` | `ok`, `error` (the game reported an error), `timeout` or `failed` (the run couldn't start). |
 | `error` | The game's message, or `null`. |
 | `ticks` | Score: slowest order's tick count minus one. `null` unless `ok`. |
-| `cost` | Cost computed from the module catalogue. |
+| `cost` | Cost computed from the module catalog. |
 | `savedSolved`, `savedTicks`, `savedCost` | Values stored in the solution file. |
 | `orderTicks` | Tick count of each completed order. |
 | `orders` | One array per order, with one entry per tick. |

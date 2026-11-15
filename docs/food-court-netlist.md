@@ -78,7 +78,7 @@ Sequencer cola (.START(scan.COLA | scan.HIGHBALL), .STOP(start_serve)) {
 | Part | Meaning |
 |---|---|
 | `fixed` | A part of the level that can't be removed. |
-| `<Type>` | The module type, such as `Sorter` or `CounterSmall`. See the module catalogue in [Food Court solution format](food-court-format.md). |
+| `<Type>` | The module type, such as `Sorter` or `CounterSmall`. See the module catalog in [Food Court solution format](food-court-format.md). |
 | `#(...)` | The module's settings: a dispenser's item, a counter's deltas (2 for small counter, 4 for large), a painter's 2 values, an animatronic's flag (`#(0)` or `#(1)`). |
 | `<name>` | Needed to use the block's outputs. |
 | `@(x,y) facing` | Floor position. `facing` is `right`, `up`, `left` or `down`. |
@@ -100,9 +100,9 @@ Each output, `A` to `D`, lists the steps it is ON, from step 0 (the tick after S
 
 ### Socket names
 
-Sockets use the catalogue names or short forms:
+Sockets use the catalog names or short forms:
 
-| Short | Catalogue | Used on |
+| Short | Catalog | Used on |
 |---|---|---|
 | `A` to `D` | `OUTPUT_A` to `OUTPUT_D`, `INPUT_A` to `INPUT_D` | Sequencers, mixers |
 | `ZERO`, `POS` | `ZERO_FLAG`, `POSITIVE_FLAG` | Counters |

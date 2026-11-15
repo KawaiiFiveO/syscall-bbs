@@ -42,16 +42,16 @@ A frame's settings are in `<name>.png.cfg` next to its PNG, one `key: value` per
 | Key | Effect |
 |---|---|
 | `format: r` | One-channel frame: the red channel after premultiplying. Default `rgba`. |
-| `premultiply-alpha: false` | Stores colour without multiplying it by alpha. |
+| `premultiply-alpha: false` | Stores color without multiplying it by alpha. |
 | `blend: additive` | Sets alpha to 0 after premultiplying, for additive drawing. Not with `format: r`. |
 | `crop: <x>,<y>,<width>,<height>` | Crop rectangle in pixels. Default the whole image. |
 | `crop-offset: <x>,<y>` | Position of the image in its canvas. Default `0,0`. |
 | `crop-size: <width>,<height>` | Size of the canvas. Default the image size. |
-| `colorblind-mode: <n>` | Colourblind mode number. Default 0. |
+| `colorblind-mode: <n>` | Colorblind mode number. Default 0. |
 
 The game uses the format its code asks for, not the one in the file, so a replacement must keep the original's `format`. Only some draw calls apply `crop-offset`; desktop icons do.
 
-`unpack` sets `blend: additive` when every alpha is 0 and some colour isn't, and `premultiply-alpha: false` when a colour value is above its alpha.
+`unpack` sets `blend: additive` when every alpha is 0 and some color isn't, and `premultiply-alpha: false` when a color value is above its alpha.
 
 ## File format
 
@@ -74,8 +74,8 @@ Each frame:
 | `float32` ×2 | Pivot, 0,0 |
 | `float32` ×2 | Crop offset |
 | `float32` ×2 | Crop size |
-| `int32` | Colourblind mode |
+| `int32` | Colorblind mode |
 | `int32` | Length of the pixel data |
 | bytes | Pixel data: an LZ4 block with no frame header |
 
-Uncompressed pixel data is width × height × bytes per pixel, in rows from the bottom up, with premultiplied alpha (`c * a / 255`, rounded down). `unpack` restores colour with `ceil(c * 255 / a)`, which packs back to the same value.
+Uncompressed pixel data is width × height × bytes per pixel, in rows from the bottom up, with premultiplied alpha (`c * a / 255`, rounded down). `unpack` restores color with `ceil(c * 255 / a)`, which packs back to the same value.

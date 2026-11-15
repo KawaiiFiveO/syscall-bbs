@@ -12,7 +12,7 @@ Closing the window keeps the session.
 | Key | Effect |
 |---|---|
 | F2 | Start the selected story over. |
-| Page Up, Page Down | Scroll back. |
+| PageUp, PageDown | Scroll back. |
 
 ## Menu
 
