@@ -1,0 +1,427 @@
+/* SysCall: retro-futurist desktop with drafting-paper pages. */
+
+/* Fonts are self-hosted: fonts.css, from fetch_fonts.py. */
+:root {
+  --md-text-font: "Barlow";
+  --md-code-font: "JetBrains Mono";
+}
+
+[data-md-color-scheme="syscall"] {
+  color-scheme: dark;
+
+  /* Desktop. */
+  --sc-plum: #5f5563;
+  --sc-plum-dark: #3a353c;
+  --sc-charcoal: #2b2a2d;
+  --sc-charcoal-dark: #1c1b1e;
+  --sc-coral: #dd4b3f;
+  --sc-coral-light: #f0796c;
+  --sc-stripe: #77736f;
+  --sc-chrome: #d9d4ce;
+
+  /* Food Court panels. */
+  --sc-paper: #e9ece5;
+  --sc-paper-light: #f5f6f2;
+  --sc-grid: #d4d6bd;
+  --sc-paper-grid: #e0e2d4;
+  --sc-rule: #b9b993;
+  --sc-navy: #1f4777;
+  --sc-navy-dark: #163558;
+  --sc-crimson: #c8103e;
+  --sc-ink: #23262c;
+  --sc-slate: #4a5058;
+  --sc-slate-dark: #2f343a;
+  --sc-lcd: #91ab5c;
+  --sc-lcd-ink: #121a0a;
+  --sc-teal: #3f7d73;
+
+  --sc-title-font: "Electrolize", var(--md-text-font-family), sans-serif;
+  --sc-label-font: "Orbitron", var(--md-text-font-family), sans-serif;
+  --sc-cut: 14px;
+
+  /* Chrome around the page: light on dark. */
+  --md-hue: 290;
+  --md-primary-fg-color: var(--sc-charcoal);
+  --md-primary-fg-color--light: var(--sc-plum);
+  --md-primary-fg-color--dark: var(--sc-charcoal-dark);
+  --md-primary-bg-color: var(--sc-chrome);
+  --md-primary-bg-color--light: #d9d4ceb3;
+  --md-accent-fg-color: var(--sc-coral-light);
+  --md-accent-fg-color--transparent: #dd4b3f22;
+  --md-accent-bg-color: #ffffff;
+  --md-accent-bg-color--light: #ffffffb3;
+
+  --md-default-fg-color: #e4dfda;
+  --md-default-fg-color--light: #c3bcb8;
+  --md-default-fg-color--lighter: #8f8790;
+  --md-default-fg-color--lightest: #ffffff1a;
+  --md-default-bg-color: var(--sc-plum-dark);
+  --md-default-bg-color--light: #3a353c8a;
+  --md-default-bg-color--lighter: #3a353c42;
+  --md-default-bg-color--lightest: #3a353c12;
+
+  --md-footer-fg-color: var(--sc-chrome);
+  --md-footer-bg-color: var(--sc-charcoal);
+  --md-footer-bg-color--dark: var(--sc-charcoal-dark);
+
+  --md-shadow-z1: none;
+  --md-shadow-z2: 0 0.2rem 0.6rem #0006;
+  --md-shadow-z3: 0 0.4rem 1.6rem #0008;
+
+  --color-foreground: 228 223 218;
+  --color-background: 58 53 60;
+  --color-background-subtle: 43 42 45;
+  --color-backdrop: 20 18 22;
+}
+
+/* The page itself: dark ink on drafting paper. */
+[data-md-color-scheme="syscall"] .md-content {
+  --md-default-fg-color: var(--sc-ink);
+  --md-default-fg-color--light: #4b4f57;
+  --md-default-fg-color--lighter: #80848a;
+  --md-default-fg-color--lightest: #23262c1f;
+  --md-default-bg-color: var(--sc-paper);
+  --md-typeset-color: var(--sc-ink);
+  --md-typeset-a-color: #1d55a0;
+  --md-accent-fg-color: var(--sc-crimson);
+  --md-typeset-mark-color: #f0796c55;
+  --md-typeset-table-color: var(--sc-rule);
+  --md-typeset-table-color--light: #ffffff66;
+  --md-typeset-kbd-color: var(--sc-paper-light);
+  --md-typeset-kbd-accent-color: #fff;
+  --md-typeset-kbd-border-color: var(--sc-slate);
+
+  --md-code-fg-color: var(--sc-lcd-ink);
+  --md-code-bg-color: var(--sc-lcd);
+  --md-code-bg-color--light: #91ab5ce6;
+  --md-code-bg-color--lighter: #91ab5c8a;
+  --md-code-hl-color: #f5f6f2;
+  --md-code-hl-color--light: #f5f6f233;
+  --md-code-hl-number-color: #5c0f22;
+  --md-code-hl-special-color: #5c0f22;
+  --md-code-hl-function-color: #0b2445;
+  --md-code-hl-constant-color: #5c0f22;
+  --md-code-hl-keyword-color: #0b2445;
+  --md-code-hl-string-color: #4a1d00;
+  --md-code-hl-name-color: var(--sc-lcd-ink);
+  --md-code-hl-operator-color: var(--sc-lcd-ink);
+  --md-code-hl-punctuation-color: #26331a;
+  --md-code-hl-comment-color: #2a3717;
+  --md-code-hl-generic-color: #26331a;
+  --md-code-hl-variable-color: #0b2445;
+
+  color: var(--sc-ink);
+}
+
+/* Desktop wallpaper: gradient plus diagonal stripes. */
+body[data-md-color-scheme="syscall"] {
+  background-color: var(--sc-charcoal-dark);
+}
+body[data-md-color-scheme="syscall"]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg,
+      transparent 0 25%,
+      var(--sc-coral) 25% 31%,
+      transparent 31% 32.5%,
+      var(--sc-stripe) 32.5% 33.3%,
+      transparent 33.3% 34.3%,
+      var(--sc-stripe) 34.3% 35.1%,
+      transparent 35.1% 36.1%,
+      var(--sc-stripe) 36.1% 36.9%,
+      transparent 36.9%),
+    linear-gradient(160deg, #6b6070 0%, var(--sc-plum-dark) 45%, #252327 100%);
+  opacity: 0.95;
+}
+[data-md-color-scheme="syscall"] .md-container,
+[data-md-color-scheme="syscall"] .md-main {
+  background: transparent;
+}
+
+/* Header: a window title bar with an angled tab. */
+[data-md-color-scheme="syscall"] .md-header {
+  background: linear-gradient(to bottom, #36353a, var(--sc-charcoal) 60%, var(--sc-charcoal-dark));
+  color: var(--sc-chrome);
+  border-bottom: 1px solid #000;
+  box-shadow: 0 1px 0 #ffffff14, 0 3px 0 var(--sc-coral);
+}
+[data-md-color-scheme="syscall"] .md-header__title {
+  font-family: var(--sc-title-font);
+  font-size: 0.9rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+[data-md-color-scheme="syscall"] .md-header__topic:first-child {
+  font-weight: 400;
+}
+[data-md-color-scheme="syscall"] .md-logo {
+  color: var(--sc-coral-light);
+}
+[data-md-color-scheme="syscall"] .md-search__form,
+[data-md-color-scheme="syscall"] .md-search__input {
+  background: var(--sc-charcoal-dark);
+  border: 1px solid #47454b;
+}
+
+/* Square corners, chamfers where it counts. */
+[data-md-color-scheme="syscall"] *,
+[data-md-color-scheme="syscall"] *::before,
+[data-md-color-scheme="syscall"] *::after {
+  border-radius: 0 !important;
+}
+
+/* The paper panel. */
+[data-md-color-scheme="syscall"] .md-content {
+  margin-top: 1.2rem;
+  margin-bottom: 2rem;
+  background-color: var(--sc-paper);
+  background-image:
+    linear-gradient(var(--sc-paper-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--sc-paper-grid) 1px, transparent 1px);
+  background-size: 16px 16px;
+  background-position: -1px -1px;
+  clip-path: polygon(0 0, calc(100% - var(--sc-cut) * 2) 0, 100% calc(var(--sc-cut) * 2),
+                     100% 100%, calc(var(--sc-cut) * 2) 100%, 0 calc(100% - var(--sc-cut) * 2));
+}
+[data-md-color-scheme="syscall"] .md-content__inner {
+  padding-top: 0;
+  padding-bottom: 1.5rem;
+}
+[data-md-color-scheme="syscall"] .md-content__inner::before {
+  height: 0;
+}
+
+/* Sidebars sit on the wallpaper. */
+[data-md-color-scheme="syscall"] .md-sidebar__inner {
+  background: #1c1b1ebf;
+  padding: 0.4rem 0;
+}
+[data-md-color-scheme="syscall"] .md-nav__title,
+[data-md-color-scheme="syscall"] .md-nav__item--section > .md-nav__link {
+  font-family: var(--sc-label-font);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--sc-coral-light);
+}
+[data-md-color-scheme="syscall"] .md-nav__link {
+  color: var(--md-default-fg-color--light);
+}
+[data-md-color-scheme="syscall"] .md-nav__link:hover,
+[data-md-color-scheme="syscall"] .md-nav__link:focus {
+  color: #fff;
+}
+[data-md-color-scheme="syscall"] .md-sidebar--primary .md-nav__link--active {
+  color: #fff !important;
+  background: var(--sc-coral);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+}
+[data-md-color-scheme="syscall"] .md-sidebar--secondary .md-nav__link--active {
+  color: var(--sc-coral-light);
+}
+
+/* Type. */
+[data-md-color-scheme="syscall"] .md-typeset {
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+[data-md-color-scheme="syscall"] .md-typeset h1,
+[data-md-color-scheme="syscall"] .md-typeset h2 {
+  font-family: var(--sc-title-font);
+  font-weight: 400;
+}
+
+/* h1: navy title bar with a crimson corner, like a catalogue page. */
+[data-md-color-scheme="syscall"] .md-typeset h1 {
+  position: relative;
+  margin: 0 -1.2rem 1.4em;
+  padding: 0.85em 1.2rem 0.85em 2.6rem;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 2px, #00000022 2px 3px),
+    var(--sc-navy);
+  border-bottom: 3px solid var(--sc-navy-dark);
+}
+[data-md-color-scheme="syscall"] .md-typeset h1::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  background: var(--sc-crimson);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+@media screen and (max-width: 76.234375em) {
+  [data-md-color-scheme="syscall"] .md-typeset h1 {
+    margin-left: -0.8rem;
+    margin-right: -0.8rem;
+  }
+}
+
+[data-md-color-scheme="syscall"] .md-typeset h2 {
+  position: relative;
+  margin-top: 2em;
+  padding: 0.35em 0 0.35em 1.7em;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  color: var(--sc-navy);
+  border-bottom: 1px solid var(--sc-rule);
+}
+[data-md-color-scheme="syscall"] .md-typeset h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.35em;
+  width: 1.1em;
+  height: 1.1em;
+  background: var(--sc-crimson);
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+}
+[data-md-color-scheme="syscall"] .md-typeset h3 {
+  margin-top: 1.6em;
+  font-size: 1.05em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--sc-slate-dark);
+}
+[data-md-color-scheme="syscall"] .md-typeset h3::before {
+  content: "";
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  margin-right: 0.5em;
+  vertical-align: 0.1em;
+  background: var(--sc-teal);
+  transform: rotate(45deg);
+}
+[data-md-color-scheme="syscall"] .md-typeset h4 {
+  font-weight: 700;
+  color: var(--sc-slate);
+}
+[data-md-color-scheme="syscall"] .md-typeset .headerlink {
+  color: var(--sc-rule);
+}
+[data-md-color-scheme="syscall"] .md-typeset h1 .headerlink {
+  color: #ffffff66;
+}
+
+[data-md-color-scheme="syscall"] .md-typeset a {
+  text-decoration: underline;
+  text-decoration-color: #1d55a066;
+  text-underline-offset: 0.18em;
+}
+[data-md-color-scheme="syscall"] .md-typeset a:hover,
+[data-md-color-scheme="syscall"] .md-typeset a:focus {
+  text-decoration-color: currentColor;
+}
+[data-md-color-scheme="syscall"] .md-typeset strong {
+  color: #000;
+}
+
+/* Inline code: a label on the paper. */
+[data-md-color-scheme="syscall"] .md-typeset :not(pre) > code {
+  color: var(--sc-navy-dark);
+  background: #dfe3d6;
+  box-shadow: inset 0 -1px 0 var(--sc-rule);
+  padding: 0 0.3em;
+  font-size: 0.84em;
+  font-weight: 450;
+}
+
+/* Code blocks: an LCD set in a slate bezel. */
+[data-md-color-scheme="syscall"] .md-typeset pre {
+  padding: 6px;
+  background: linear-gradient(to bottom, #575e67, var(--sc-slate) 40%, #3f454d);
+  border: 1px solid var(--sc-slate-dark);
+  box-shadow: inset 0 1px 0 #ffffff26;
+}
+[data-md-color-scheme="syscall"] .md-typeset pre > code {
+  color: var(--sc-lcd-ink);
+  background: var(--sc-lcd);
+  box-shadow: inset 0 2px 6px #0000004d;
+  border: 1px solid #222629;
+  font-weight: 450;
+}
+[data-md-color-scheme="syscall"] .md-typeset .md-code__nav {
+  top: calc(6px + 0.25em);
+  right: calc(6px + 0.25em);
+  background: transparent;
+}
+[data-md-color-scheme="syscall"] .md-typeset .md-code__button,
+[data-md-color-scheme="syscall"] .md-typeset .md-clipboard {
+  color: #26331a99;
+}
+[data-md-color-scheme="syscall"] .md-typeset .md-code__button:hover,
+[data-md-color-scheme="syscall"] .md-typeset .md-clipboard:hover {
+  color: var(--sc-lcd-ink);
+}
+
+/* Tables: the catalogue grid. */
+[data-md-color-scheme="syscall"] .md-typeset table:not([class]) {
+  border: 1px solid var(--sc-navy-dark);
+  background: var(--sc-paper-light);
+  font-size: 0.74rem;
+}
+[data-md-color-scheme="syscall"] .md-typeset table:not([class]) th {
+  min-width: 0;
+  padding: 0.55em 0.9em;
+  font-family: var(--sc-label-font);
+  font-weight: 600;
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  color: #fff;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 2px, #00000022 2px 3px),
+    var(--sc-navy);
+}
+[data-md-color-scheme="syscall"] .md-typeset table:not([class]) td {
+  padding: 0.6em 0.9em;
+  border-top: 1px solid var(--sc-grid);
+}
+[data-md-color-scheme="syscall"] .md-typeset table:not([class]) td code {
+  white-space: nowrap;
+}
+[data-md-color-scheme="syscall"] .md-typeset table:not([class]) tr:hover {
+  background: #e1e5d8;
+}
+
+[data-md-color-scheme="syscall"] .md-typeset ul li::marker {
+  color: var(--sc-crimson);
+}
+[data-md-color-scheme="syscall"] .md-typeset ol li::marker {
+  color: var(--sc-navy);
+  font-weight: 700;
+}
+[data-md-color-scheme="syscall"] .md-typeset blockquote {
+  color: var(--md-default-fg-color--light);
+  border-left: 4px solid var(--sc-teal);
+}
+[data-md-color-scheme="syscall"] .md-typeset hr {
+  border-bottom: 1px solid var(--sc-rule);
+}
+[data-md-color-scheme="syscall"] .md-typeset video {
+  display: block;
+  width: 100%;
+  border: 6px solid var(--sc-slate);
+  outline: 1px solid var(--sc-slate-dark);
+  background: #000;
+}
+
+/* Footer. */
+[data-md-color-scheme="syscall"] .md-footer {
+  border-top: 3px solid var(--sc-coral);
+}
+[data-md-color-scheme="syscall"] .md-footer__title {
+  font-family: var(--sc-title-font);
+  font-size: 0.8rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}

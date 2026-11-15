@@ -13,7 +13,7 @@ https://github.com/user-attachments/assets/56f08b51-0a20-489b-b9f9-bf7041386f72
 
 ## Installation
 
-1. Extract the release zip.
+1. Extract the release zip (named `SysCallBBS-v1.x.x`). ([**Download latest**](https://github.com/KawaiiFiveO/syscall-bbs/releases/latest))
 2. Run `Install.cmd`, or drop the game's folder on it.
 3. Choose the mods to install.
 4. Start the game with `Last Call BBS (Modded).exe` in the game folder.
@@ -45,7 +45,7 @@ mods/
 
 ## Mods
 
-To install a mod, copy its folder into `mods/` in the game folder. Each mod's settings are in `mods/<Name>/config.ini`, and documentation is in `mods/<Name>/README.md`.
+To install a mod, copy its folder into `mods/` in the game folder. Mod settings are in `mods/<Name>/config.ini`. Documentation is in `mods/<Name>/README.md`.
 
 **Warning:** Mods run with the same permissions as the game. Only install mods from sources you trust.
 
@@ -92,8 +92,9 @@ Edit `LastCallBBS.Launcher.ini` in the game folder.
 * Yomiel, the Z-machine core, is the `yomiel/` submodule: `git submodule update --init` (see [yomiel/docs/library.md](yomiel/docs/library.md))
 * Releases: pushing a `v*` tag runs `.github/workflows/release.yml`, which attaches the zip to a draft release
 * Release zip: `launcher/package.ps1`, written to `dist/`
+* Documentation site: `python website/build.py [serve]` with Zensical (`pip install -r website/requirements.txt`); pages are the `nav` in `website/zensical.toml`, and `.github/workflows/docs.yml` deploys it to GitHub Pages
 * Tests: `tests/run-tests.ps1`
 
 ## License
 
-SysCall BBS is licensed under the [0BSD License](https://xn--gba.st/kawaiifiveo).
+SysCall BBS is licensed under the [0BSD License](https://xn--gba.st/kawaiifiveo). See [LICENSE.txt](LICENSE.txt).

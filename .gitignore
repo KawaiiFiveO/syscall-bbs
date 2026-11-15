@@ -7,3 +7,7 @@ __pycache__/
 decompiled/
 specs/
 dist/
+website/site/
+website/public/
+website/stage/
+website/.publish.toml

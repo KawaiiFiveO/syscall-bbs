@@ -4,3 +4,4 @@
 *.dll binary
 *.exe binary
 *.png binary
+*.woff2 binary
