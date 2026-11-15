@@ -566,7 +566,7 @@ internal sealed class Player : IDesktopProgram, IProgramMenu
         int row = 2;
         if (stories.Count == 0)
         {
-            target.Write(2, row++, "No story files found. Put .z5 or .z8 files in:");
+            target.Write(2, row++, "No story files found. Put .z5, .z7 or .z8 files in:");
             row++;
             foreach (string part in Chunks(settings.StoryFolder, Columns - 4))
                 target.Write(2, row++, part, Dim, DefaultBack);

@@ -1,4 +1,4 @@
-// Z-machine interpreter program: plays .z5 and .z8 story files in a desktop window, using Yomiel.
+// Z-machine interpreter program: plays .z5, .z7 and .z8 story files in a desktop window, using Yomiel.
 using System;
 using System.Collections.Generic;
 using System.IO;
