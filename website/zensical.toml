@@ -30,6 +30,7 @@ extra_css = ["_theme/fonts.css", "_theme/syscall.css"]
 language = "en"
 # Fonts are bundled: theme/fonts.css, from fetch_fonts.py.
 font = false
+favicon = "_theme/favicon.png"
 features = [
   "content.code.copy",
   "navigation.footer",
