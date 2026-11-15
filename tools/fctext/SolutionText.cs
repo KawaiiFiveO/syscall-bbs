@@ -19,7 +19,7 @@ public static class SolutionText
         for (int i = 0; i < s.Modules.Count; i++)
             lines.Add(FormatModule(i, s.Modules[i]));
         lines.Add("");
-        lines.AddRange(s.Wires.Select(w => FormatWire(s, w)));
+        lines.AddRange(s.Wires.Select((w, i) => FormatWire(s, w) + FormatColor(s, i)));
         return string.Join("\n", lines) + "\n";
     }
 
@@ -64,6 +64,9 @@ public static class SolutionText
         string b = Endpoint(s, w.ModuleB, w.SocketB);
         return InputFirst(s, w) ? $"{b} -> {a}" : $"{a} -> {b}";
     }
+
+    private static string FormatColor(SolutionFile s, int wire) =>
+        s.WireColors != null && s.WireColors[wire] != 0 ? " color=" + WireColorBlock.Name(s.WireColors[wire]) : "";
 
     /// <summary>Saved wires can have either end first. The text always puts the output first when it's known.</summary>
     public static bool InputFirst(SolutionFile s, SolutionWire w) =>

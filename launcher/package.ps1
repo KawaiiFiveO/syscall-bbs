@@ -39,6 +39,7 @@ Copy-Item "$PSScriptRoot\LastCallBBS.Launcher.ini" $files
 Add-Mod "SkipLoading" "mods"
 Add-Mod "HookLogger" "optional-mods"
 Add-Mod "FoodCourtTools" "optional-mods"
+Add-Mod "WireColors" "optional-mods"
 Add-Mod "YomielPlayer" "optional-mods"
 Add-Mod "TrackerPlayer" "optional-mods"
 

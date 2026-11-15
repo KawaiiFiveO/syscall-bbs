@@ -32,6 +32,9 @@ public sealed class SolutionFile
     public List<SolutionModule> Modules = new();
     public List<SolutionWire> Wires = new();
 
+    /// <summary>One color per wire, from the Wire Colors mod's block after the wires (see <see cref="WireColorBlock"/>), or null if the file has none.</summary>
+    public byte[] WireColors;
+
     public static SolutionFile Read(byte[] bytes)
     {
         using var r = new BinaryReader(new MemoryStream(bytes));
@@ -51,7 +54,11 @@ public sealed class SolutionFile
 
         long left = r.BaseStream.Length - r.BaseStream.Position;
         if (left != 0)
-            throw new InvalidDataException($"{left} unread bytes after the last wire");
+        {
+            s.WireColors = WireColorBlock.TryRead(bytes, (int)r.BaseStream.Position, wires, out int length);
+            if (s.WireColors == null || length != left)
+                throw WireColorBlock.Unreadable(left);
+        }
         return s;
     }
 
@@ -123,8 +130,18 @@ public sealed class SolutionFile
             w.Write(wire.ModuleB);
             w.Write(wire.SocketB);
         }
+        if (WireColors != null)
+            w.Write(WireColorBlock.Block(WireColors));
         w.Flush();
         return stream.ToArray();
+    }
+
+    /// <summary>A copy without the wire color block, as the unmodded game writes it.</summary>
+    public SolutionFile Vanilla()
+    {
+        SolutionFile copy = Read(Write());
+        copy.WireColors = null;
+        return copy;
     }
 
     /// <summary>The cost the game would show: the price of every removable module.</summary>

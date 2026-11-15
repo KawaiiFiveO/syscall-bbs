@@ -48,6 +48,7 @@ $bad = @(
     @{ Name = "input to input"; From = "m3.OUTPUT_A"; To = "m3.INPUT_B"; Expect = "output to an input" }
     @{ Name = "socket used twice"; From = "m3.OUTPUT_A -> m2.TRIGGER_A"; To = "m3.OUTPUT_A -> m2.TRIGGER_A`nm3.OUTPUT_A -> m2.TRIGGER_B"; Expect = "already has a wire" }
     @{ Name = "unreadable line"; From = "m3.OUTPUT_A -> m2.TRIGGER_A"; To = "connect things"; Expect = "can't read" }
+    @{ Name = "unknown wire color"; From = "m3.OUTPUT_A -> m2.TRIGGER_A"; To = "m3.OUTPUT_A -> m2.TRIGGER_A color=mauve"; Expect = "unknown wire color" }
 )
 
 $failed = 0
@@ -94,6 +95,39 @@ $grid = $valid -replace "m3 MixerSimple rack=2,2", "m3 MixerSimple rack=2,2`nm4 
 $sequencer = Join-Path $root "grid.solution"
 $result = Run-Import $grid $sequencer
 Check ($result.Code -eq 0 -and ((& $fctext $sequencer) -join "`n") -match "grid=#\.\.\./\.#\.\./\.\.#\./\.\.\.#/") "sequencer grid survives"
+
+# Wire colors: the Wire Colors mod's block after the wires.
+$colored = $valid.Replace("m0.START -> m3.INPUT_A", "m0.START -> m3.INPUT_A color=7").Replace("m3.OUTPUT_A -> m2.TRIGGER_A", "m3.OUTPUT_A -> m2.TRIGGER_A color=blue")
+$coloredFile = Join-Path $root "colored.solution"
+$result = Run-Import $colored $coloredFile
+$text = (& $fctext $coloredFile) -join "`n"
+Check ($result.Code -eq 0 -and $text -match "m0\.START -> m3\.INPUT_A color=pink" -and $text -match "m3\.OUTPUT_A -> m2\.TRIGGER_A color=blue") "wire colors survive"
+Check ((Get-Item $coloredFile).Length -eq (Get-Item $good).Length + 10) "the color block is magic, count and a byte per wire"
+& $fctext --check $coloredFile | Out-Null
+Check ($LASTEXITCODE -eq 0) "colored file passes --check"
+
+$vanilla = Join-Path $root "vanilla.solution"
+& $fctext --vanilla $coloredFile $vanilla | Out-Null
+Check ($LASTEXITCODE -eq 0 -and (Get-FileHash $vanilla).Hash -eq (Get-FileHash $good).Hash) "--vanilla removes the colors and nothing else"
+function Run-Fctext([string[]]$arguments) {
+    $errorFile = Join-Path $root "stderr.txt"
+    $process = Start-Process -FilePath $fctext -ArgumentList ($arguments | ForEach-Object { "`"$_`"" }) -NoNewWindow -Wait -PassThru -RedirectStandardError $errorFile -RedirectStandardOutput (Join-Path $root "stdout.txt")
+    return @{ Code = $process.ExitCode; Error = (Get-Content $errorFile -Raw) }
+}
+
+$before = (Get-FileHash $vanilla).Hash
+$result = Run-Fctext @("--vanilla", $coloredFile, $vanilla)
+Check ($result.Code -ne 0 -and (Get-FileHash $vanilla).Hash -eq $before) "--vanilla won't overwrite an existing file"
+
+$goodBytes = [IO.File]::ReadAllBytes($good)
+$junk = Join-Path $root "junk.solution"
+[IO.File]::WriteAllBytes($junk, $goodBytes + [byte[]](1, 2, 3))
+$result = Run-Fctext @("--check", $junk)
+Check ($result.Code -ne 0 -and $result.Error -match "aren't a wire color block") "refuses bytes after the wires that aren't a color block"
+$wrongCount = Join-Path $root "wrongcount.solution"
+[IO.File]::WriteAllBytes($wrongCount, $goodBytes + [Text.Encoding]::ASCII.GetBytes("WCOL") + [BitConverter]::GetBytes(3) + [byte[]](1, 2, 3))
+$result = Run-Fctext @("--check", $wrongCount)
+Check ($result.Code -ne 0 -and $result.Error -match "aren't a wire color block") "refuses a color block with the wrong count"
 
 $index = 0
 foreach ($case in $bad) {

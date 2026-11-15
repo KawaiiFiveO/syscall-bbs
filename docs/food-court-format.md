@@ -14,6 +14,7 @@
 | `fctext <file.solution> -o <file.txt>` | Writes one solution to a UTF-8 text file. |
 | `fctext --check <file.solution or folder>...` | Checks that each file is fully understood: rewriting it gives identical bytes, it passes validation, a solved file's saved cost matches the catalog, and text conversion round-trips. |
 | `fctext --import <text file> <new.solution>` | Writes a new solution from text, after validation. The result is unsolved with a cost of 0. |
+| `fctext --vanilla <file.solution> <new.solution>` | Writes a copy without wire colors. |
 | `fctext --compile <file.fcn> <new.solution>` | Writes a new solution from a netlist. See [Food Court netlist language](food-court-netlist.md). |
 | `fctext --to-netlist <file.solution or text file> [-o <file.fcn>]` | Converts a solution to a netlist. |
 | `fctext --check-placement <solution, text file or folder>...` | Applies the game's placement rules: floor and rack fit, overlaps, required rows and rotations, and pump rules. |
@@ -34,6 +35,7 @@ Little-endian. A `string` is an `int` byte length followed by UTF-8 bytes.
 | Modules | module records |
 | Wire count | `int` |
 | Wires | 4 `int`s each: module A, socket A, module B, socket B |
+| Wire colors | Optional; see [Wire colors](#wire-colors) |
 
 ### Module record
 
@@ -65,6 +67,23 @@ Older versions have an extra `int` in some records:
 | Before 1011 | `Sequencer`, `CounterSmall`, `CounterLarge` | Before the data |
 | Before 1012 | `Microwave`, `Grill`, `Fryer` | Before the data |
 | Before 1013 | `LiquidInput*` | After the data |
+
+### Wire colors
+
+The [Wire Colors](../mods/WireColors/README.md) mod writes a block after the wires. The game without the mod ignores it.
+
+| Field | Type |
+|---|---|
+| Magic | 4 bytes, ASCII `WCOL` |
+| Count | `int`, equal to the wire count |
+| Colors | 1 `byte` per wire, in wire order |
+
+| Value | Color |
+|---|---|
+| 0 | Orange, the game's own |
+| 1 to 8 | `red`, `yellow`, `green`, `cyan`, `blue`, `purple`, `pink`, `white` |
+
+The block is only written when a wire has a color.
 
 ## Text format
 
@@ -110,10 +129,10 @@ m<n> <type> [fixed] rack=<x>,<y> floor=<x>,<y> [rot=<n>] [values=<v>,...] [grid=
 ### Wires
 
 ```text
-m<n>.<socket> -> m<n>.<socket>
+m<n>.<socket> -> m<n>.<socket> [color=<color>]
 ```
 
-The output socket comes first. A socket is its name, such as `INPUT_A`, or `#` and its index, such as `#1`.
+The output socket comes first. A socket is its name, such as `INPUT_A`, or `#` and its index, such as `#1`. A color is its name, such as `blue`, or its value; see [Wire colors](#wire-colors). Netlists don't keep colors.
 
 ## Sockets
 

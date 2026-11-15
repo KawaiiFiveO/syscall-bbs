@@ -14,6 +14,7 @@ nav = [
     { "Yomiel" = "mods/YomielPlayer/README.md" },
     { "Muzakal" = "mods/TrackerPlayer/README.md" },
     { "FoodCourtTools" = "mods/FoodCourtTools/README.md" },
+    { "WireColors" = "mods/WireColors/README.md" },
   ] },
   { "Files" = [
     { "Making mods" = "docs/making-mods.md" },

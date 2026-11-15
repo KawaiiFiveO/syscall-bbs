@@ -159,6 +159,8 @@ string label = context.Config.GetString("Label", "Default");
 * Throws if the file is missing, outside the mod's folder or not a PNG.
 * Loading the same file twice returns the same object.
 
+`context.Textures.FromPixels(width, height, rgba)` returns a `ModTexture` made from pixels: 4 bytes each, top row first, alpha not premultiplied. Its `Path` is null.
+
 `ModTexture.GameTexture` is the game's `Texture` object, with premultiplied alpha. `scope = full` only.
 
 * Created on first read.

@@ -14,6 +14,7 @@ internal static class Program
         "  fctext <file.solution> -o <file.txt>          write one solution to a text file\n" +
         "  fctext --check <file.solution or folder>...   confirm files are fully understood\n" +
         "  fctext --import <text file> <new.solution>    write a new solution from text\n" +
+        "  fctext --vanilla <file.solution> <new.solution>   write a copy without wire colors\n" +
         "  fctext --check-placement <solution, text file or folder>...   apply the game's placement rules\n" +
         "  fctext --compile <file.fcn> <new.solution> [--strict] [-O0]   compile a netlist\n" +
         "  fctext --to-netlist <file.solution or text file> [-o <file.fcn>]   write a solution as a netlist";
@@ -22,6 +23,9 @@ internal static class Program
     {
         if (args.Length > 0 && args[0] == "--import")
             return args.Length == 3 ? Import(args[1], args[2]) : Fail(Usage);
+
+        if (args.Length > 0 && args[0] == "--vanilla")
+            return args.Length == 3 ? Vanilla(args[1], args[2]) : Fail(Usage);
 
         if (args.Length > 0 && args[0] == "--compile")
         {
@@ -181,6 +185,27 @@ internal static class Program
         }
     }
 
+    private static int Vanilla(string input, string output)
+    {
+        if (!output.EndsWith(".solution", StringComparison.OrdinalIgnoreCase))
+            return Fail("The output file must end in .solution");
+        try
+        {
+            SolutionFile solution = SolutionFile.Read(File.ReadAllBytes(input));
+            byte[] bytes = solution.Vanilla().Write();
+            using (var stream = new FileStream(output, FileMode.CreateNew, FileAccess.Write))
+                stream.Write(bytes, 0, bytes.Length);
+            int colored = solution.WireColors?.Count(c => c != 0) ?? 0;
+            Console.WriteLine(solution.WireColors == null ? $"Wrote {output}; it had no wire colors" : $"Wrote {output} without {colored} wire colors");
+            return 0;
+        }
+        catch (Exception e) when (e is InvalidDataException || e is EndOfStreamException || e is IOException)
+        {
+            Console.Error.WriteLine($"{input}: {e.Message}");
+            return 1;
+        }
+    }
+
     private static int Import(string textPath, string outputPath)
     {
         if (!outputPath.EndsWith(".solution", StringComparison.OrdinalIgnoreCase))
@@ -239,6 +264,9 @@ internal static class Program
         {
             // Text always has the output end of a wire first, so compare against that form.
             var expected = SolutionFile.Read(bytes);
+            // Text only shows colors other than the game's own.
+            if (expected.WireColors != null && !WireColorBlock.AnySet(expected.WireColors))
+                expected.WireColors = null;
             foreach (SolutionWire w in expected.Wires.Where(w => SolutionText.InputFirst(expected, w)))
             {
                 (w.ModuleA, w.ModuleB) = (w.ModuleB, w.ModuleA);

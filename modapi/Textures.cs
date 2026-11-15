@@ -9,6 +9,9 @@ public interface ITextureSource
 {
     /// <summary>Loads a PNG into the game and returns the game's texture object.</summary>
     object Create(string path);
+
+    /// <summary>Creates a game texture from RGBA pixels: top row first, alpha not premultiplied.</summary>
+    object Create(int width, int height, byte[] rgba);
 }
 
 /// <summary>Loads PNG files from the mod's folder as game textures.</summary>
@@ -58,31 +61,45 @@ public sealed class ModTextures
         if (header[12] != 'I' || header[13] != 'H' || header[14] != 'D' || header[15] != 'R')
             throw new InvalidDataException($"{relativePath} is not a PNG");
 
-        texture = new ModTexture(path, BigEndian(header, 16), BigEndian(header, 20), _source, _full);
+        texture = new ModTexture(path, BigEndian(header, 16), BigEndian(header, 20), () => _source.Create(path), _full);
         _loaded[path] = texture;
         return texture;
+    }
+
+    /// <summary>
+    /// Makes a texture from RGBA pixels, 4 bytes each, top row first, with alpha not premultiplied
+    /// (as in a PNG). The pixels are copied, and the game texture is created the first time it's used.
+    /// </summary>
+    public ModTexture FromPixels(int width, int height, byte[] rgba)
+    {
+        if (width <= 0 || height <= 0)
+            throw new ArgumentException($"a texture can't be {width}x{height}");
+        if (rgba == null || rgba.Length != (long)width * height * 4)
+            throw new ArgumentException($"a {width}x{height} texture needs {(long)width * height * 4} bytes of pixels");
+        byte[] copy = (byte[])rgba.Clone();
+        return new ModTexture(null, width, height, () => _source.Create(width, height, copy), _full);
     }
 
     private static int BigEndian(byte[] b, int at) => b[at] << 24 | b[at + 1] << 16 | b[at + 2] << 8 | b[at + 3];
 }
 
-/// <summary>A PNG from the mod's folder. It's loaded with premultiplied alpha, as the game loads its own images.</summary>
+/// <summary>A texture from a PNG in the mod's folder or from pixels. It's loaded with premultiplied alpha, as the game loads its own images.</summary>
 public sealed class ModTexture
 {
-    private readonly ITextureSource _source;
+    private readonly Func<object> _create;
     private readonly bool _full;
     private object _game;
 
-    internal ModTexture(string path, int width, int height, ITextureSource source, bool full)
+    internal ModTexture(string path, int width, int height, Func<object> create, bool full)
     {
         Path = path;
         Width = width;
         Height = height;
-        _source = source;
+        _create = create;
         _full = full;
     }
 
-    /// <summary>The full path of the PNG file.</summary>
+    /// <summary>The full path of the PNG file, or null for a texture made from pixels.</summary>
     public string Path { get; }
 
     public int Width { get; }
@@ -99,7 +116,7 @@ public sealed class ModTexture
         {
             if (!_full)
                 throw new ModScopeException("GameTexture needs scope = full in mod.ini");
-            return _game ??= _source.Create(Path);
+            return _game ??= _create();
         }
     }
 }

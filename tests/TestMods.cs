@@ -77,6 +77,10 @@ public class Mod : IMod
         Expect(c, "missing", () => c.Textures.Load("nothing.png"));
         Expect(c, "not png", () => c.Textures.Load("fake.png"));
         Expect(c, "scoped game texture", () => _ = icon.GameTexture);
+        ModTexture pixels = c.Textures.FromPixels(2, 1, new byte[8]);
+        c.Log.Info($"pixels {pixels.Width}x{pixels.Height}, path {pixels.Path ?? "none"}");
+        Expect(c, "short pixels", () => c.Textures.FromPixels(2, 2, new byte[8]));
+        Expect(c, "empty size", () => c.Textures.FromPixels(0, 1, new byte[0]));
     }
 
     private static void Expect(ModContext c, string what, Action action)

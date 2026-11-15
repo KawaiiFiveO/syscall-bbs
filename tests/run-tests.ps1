@@ -127,7 +127,7 @@ function Test-Build([string]$gameDir) {
     }
 
     # A clean install with only our own mods must pass outright.
-    & (Join-Path $repo "launcher\install.ps1") -GameDir $sandbox -Mods SkipLoading,HookLogger,FoodCourtTools | Out-Null
+    & (Join-Path $repo "launcher\install.ps1") -GameDir $sandbox -Mods SkipLoading,HookLogger,FoodCourtTools,WireColors | Out-Null
     $exe = Join-Path $sandbox "Last Call BBS (Modded).exe"
     $logPath = Join-Path $sandbox "LastCallBBS.Launcher.log"
     $log = Get-Content $logPath
@@ -145,6 +145,7 @@ function Test-Build([string]$gameDir) {
     Check ($log -match "Loaded Hook Logger").Count "HookLogger passes its scope check"
     Check (($log -match "Loaded Food Court Tools").Count -and -not ($log -match "simulation runner unavailable|level export unavailable|live editing unavailable|playback speeds unavailable").Count) "FoodCourtTools finds its game code"
     Check ($log -match "Fast-forward speeds: 3, 6, 12, 20 ticks/s").Count "playback speeds patch applies"
+    Check (($log -match "Loaded Wire Colors").Count -and -not ($log -match "\[onehalf\.wirecolors\].*unavailable").Count) "WireColors finds its game code"
     if ($isSteam) {
         Check ($log -match "relaunch through Steam disabled").Count "Steam relaunch disabled"
         Check ($log -match "leaderboards blocked \(6 calls\)").Count "leaderboards blocked"
@@ -191,7 +192,8 @@ function Test-Build([string]$gameDir) {
     Check ($log -match "still running after the problem").Count "mod keeps running after reporting a problem"
     Check ($log -match "\[test\.with_dep\] helper ok").Count "mod finds its own dependency"
     Check ($log -match "\[test\.textures\] icon 3x2, same object True").Count "PNG size is read and loads are shared"
-    foreach ($what in @("outside", "missing", "not png", "scoped game texture")) {
+    Check ($log -match "\[test\.textures\] pixels 2x1, path none").Count "texture from pixels keeps its size"
+    foreach ($what in @("outside", "missing", "not png", "scoped game texture", "short pixels", "empty size")) {
         Check ($log -match "\[test\.textures\] ${what}: rejected").Count "texture load rejects: $what"
     }
     Check ($log -match "\[test\.programs\] screen \[        ab\|          \|line2     \|line3     \]").Count "text screen clips, writes and scrolls"

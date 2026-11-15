@@ -73,6 +73,10 @@ A desktop program that plays Protracker modules. See [mods/TrackerPlayer/README.
 
 Runs 20th Century Food Court solutions on request, edits them as text in the running game, and adds multiple playback speeds. See [mods/FoodCourtTools/README.md](mods/FoodCourtTools/README.md).
 
+### WireColors
+
+Colors for 20th Century Food Court wires, saved with the solution. See [mods/WireColors/README.md](mods/WireColors/README.md).
+
 ## Configuration
 
 Edit `LastCallBBS.Launcher.ini` in the game folder.

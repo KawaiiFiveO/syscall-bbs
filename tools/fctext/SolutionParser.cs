@@ -15,12 +15,13 @@ public sealed class SolutionFormatException : Exception
 public static class SolutionParser
 {
     private static readonly Regex ModuleLine = new(@"^m(\d+)\s+(\S+)(.*)$");
-    private static readonly Regex WireLine = new(@"^m(\d+)\.(\S+)\s*->\s*m(\d+)\.(\S+)$");
+    private static readonly Regex WireLine = new(@"^m(\d+)\.(\S+)\s*->\s*m(\d+)\.(\S+?)(?:\s+color=(\S+))?$");
 
     public static SolutionFile Parse(string text)
     {
         var s = new SolutionFile { Version = ModuleCatalog.CurrentVersion };
         bool haveLevel = false, haveName = false;
+        var colors = new List<byte>();
 
         string[] lines = text.Split('\n');
         for (int i = 0; i < lines.Length; i++)
@@ -34,7 +35,10 @@ public static class SolutionParser
             Match wire = WireLine.Match(line);
             Match module = ModuleLine.Match(line);
             if (wire.Success)
+            {
                 s.Wires.Add(ParseWire(s, wire, number));
+                colors.Add(ParseColor(wire.Groups[5], number));
+            }
             else if (module.Success)
                 s.Modules.Add(ParseModule(s, module, number));
             else if (line.StartsWith("level "))
@@ -62,6 +66,8 @@ public static class SolutionParser
             throw new SolutionFormatException(1, "missing level line");
         if (!haveName)
             throw new SolutionFormatException(1, "missing name line");
+        if (WireColorBlock.AnySet(colors))
+            s.WireColors = colors.ToArray();
         return s;
     }
 
@@ -165,6 +171,14 @@ public static class SolutionParser
         wire.SocketA = Socket(s, wire.ModuleA, match.Groups[2].Value, number);
         wire.SocketB = Socket(s, wire.ModuleB, match.Groups[4].Value, number);
         return wire;
+    }
+
+    private static byte ParseColor(Group group, int number)
+    {
+        if (!group.Success)
+            return 0;
+        return WireColorBlock.Parse(group.Value) ?? throw new SolutionFormatException(number,
+            $"unknown wire color \"{group.Value}\" (use {string.Join(", ", WireColorBlock.Names)} or a number up to 255)");
     }
 
     private static int Socket(SolutionFile s, int module, string name, int number)

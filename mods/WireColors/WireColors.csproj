@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>WireColors</AssemblyName>
+    <RootNamespace>LastCallBBS.Mods.WireColors</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\modapi\LastCallBBS.ModAPI.csproj" Private="false" />
+    <Compile Include="..\..\tools\fctext\WireColorBlock.cs" Link="Shared\WireColorBlock.cs" />
+    <Compile Include="..\..\tools\textool\TexFile.cs" Link="Shared\TexFile.cs" />
+    <Compile Include="..\..\tools\textool\Lz4.cs" Link="Shared\Lz4.cs" />
+  </ItemGroup>
+</Project>

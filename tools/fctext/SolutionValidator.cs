@@ -27,6 +27,8 @@ public static class SolutionValidator
         for (int i = 0; i < s.Modules.Count; i++)
             CheckModule(s, i, problems);
         CheckWires(s, problems);
+        if (s.WireColors != null && s.WireColors.Length != s.Wires.Count)
+            problems.Add($"{s.WireColors.Length} wire colors for {s.Wires.Count} wires");
         return problems;
     }
 
