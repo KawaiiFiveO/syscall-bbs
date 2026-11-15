@@ -183,6 +183,11 @@ function Uninstall-SysCall([string]$gameDir, [bool]$confirm) {
             $count = @(Get-ChildItem -LiteralPath $stories -File -Recurse).Count
             if ($count) { Write-Host "    including $count story file(s) in mods\YomielPlayer\stories" }
         }
+        $modules = Join-Path $mods "TrackerPlayer\modules"
+        if (Test-Path -LiteralPath $modules) {
+            $count = @(Get-ChildItem -LiteralPath $modules -File -Recurse).Count
+            if ($count) { Write-Host "    including $count module file(s) in mods\TrackerPlayer\modules" }
+        }
     }
     Write-Host "Game saves and mod data in Documents\My Games\Last Call BBS are kept."
 

@@ -27,6 +27,7 @@ internal static class DesktopPrograms
 
     private static readonly List<Registration> Registrations = new();
     private static readonly ConditionalWeakTable<object, Session> Sessions = new();
+    private static readonly List<Session> OpenSessions = new();
 
     private static string _failure;
     private static bool _resolved, _attached, _iconsFailed, _desktopShown;
@@ -52,6 +53,8 @@ internal static class DesktopPrograms
     private static Func<TextFont, object> _gridFont;
     private static readonly Dictionary<TextFont, Face> Faces = new();
     private static readonly Dictionary<(TextFont, char), float> GlyphWidths = new();
+    private const string CodePage437Symbols = "☺☻♥♦♣♠•◘○◙♂♀♪♫☼" +
+        "►◄↕‼¶§▬↨↑↓→←∟↔▲▼";
     private static readonly System.Text.Encoding CodePage437 = System.Text.Encoding.GetEncoding(437,
         new System.Text.EncoderReplacementFallback("?"), new System.Text.DecoderReplacementFallback("?"));
 
@@ -71,7 +74,10 @@ internal static class DesktopPrograms
         {
             Attach();
             Log.Info("Programs: OK");
-            return new List<string>();
+            var failures = new List<string>(ProgramMouse.Verify());
+            if (_musicFailure != null)
+                failures.Add($"game music: {_musicFailure}");
+            return failures;
         }
         catch (ShapeMismatchException e)
         {
@@ -97,6 +103,32 @@ internal static class DesktopPrograms
             _harmony?.UnpatchAll(_harmony.Id);
             _failure = (e as ShapeMismatchException ?? e.InnerException as ShapeMismatchException)?.Message ?? e.Message;
             throw new ShapeMismatchException(_failure);
+        }
+        AttachMusic();
+    }
+
+    private static string _musicFailure;
+
+    // Optional: programs still work without it.
+    private static void AttachMusic()
+    {
+        try
+        {
+            MusicFilter.Attach(_harmony, () =>
+            {
+                var strongest = GameMusic.Playing;
+                foreach (Session s in OpenSessions)
+                {
+                    if (!s.Closed && s.Window.GameMusic > strongest)
+                        strongest = s.Window.GameMusic;
+                }
+                return strongest;
+            });
+        }
+        catch (ShapeMismatchException e)
+        {
+            _musicFailure = e.Message;
+            Log.Error($"Game music: FAILED - {e.Message}");
         }
     }
 
@@ -627,6 +659,7 @@ internal static class DesktopPrograms
     {
         Session session = SessionOf(self);
         session.Clock.Start();
+        OpenSessions.Add(session);
         session.Call("Opened", () => session.Registration.Program.Opened(session.Window));
     }
 
@@ -635,6 +668,7 @@ internal static class DesktopPrograms
         Session session = SessionOf(self);
         session.Call("Closed", () => session.Registration.Program.Closed(session.Window));
         session.Closed = true;
+        OpenSessions.Remove(session);
     }
 
     internal static void Update(object self)
@@ -648,6 +682,18 @@ internal static class DesktopPrograms
 
         if (!session.Failed)
         {
+            (List<MouseClick> clicks, int wheel) = ProgramMouse.Read(session.Window, session.MouseArmed, CellW, CellH);
+            if (session.Registration.Program is IProgramMouse mouse)
+            {
+                foreach (MouseClick click in clicks)
+                {
+                    MouseClick c = click;
+                    if (!session.Call("MouseClicked", () => mouse.MouseClicked(session.Window, c)))
+                        break;
+                }
+                if (wheel != 0)
+                    session.Call("MouseWheel", () => mouse.MouseWheel(session.Window, session.Window.MouseColumn, session.Window.MouseRow, wheel));
+            }
             foreach (KeyPress key in ReadKeys())
             {
                 KeyPress k = key;
@@ -810,7 +856,9 @@ internal static class DesktopPrograms
                 return mapped;
             if (Kind == TextFont.Cga)
             {
-                mapped = (char)CodePage437.GetBytes(new[] { c })[0];
+                // The encoder treats 0x01-0x1F and 0x7F as control codes; the font draws symbols there.
+                int symbol = CodePage437Symbols.IndexOf(c);
+                mapped = symbol >= 0 ? (char)(symbol + 1) : c == '⌂' ? (char)0x7F : (char)CodePage437.GetBytes(new[] { c })[0];
             }
             else
             {
@@ -867,6 +915,7 @@ internal static class DesktopPrograms
         public Stopwatch Clock { get; } = new();
         public float Blink;
         public bool Failed, DrawFailed, Closed;
+        public readonly bool[] MouseArmed = new bool[3];
 
         /// <summary>Runs one program callback. On an exception the program stops and its screen shows why.</summary>
         public bool Call(string what, Action action)

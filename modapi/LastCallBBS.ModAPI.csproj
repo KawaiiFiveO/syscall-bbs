@@ -12,4 +12,9 @@
   <ItemGroup>
     <PackageReference Include="Lib.Harmony" Version="2.3.3" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- The loader updates ProgramWindow's mouse position. -->
+    <InternalsVisibleTo Include="Last Call BBS (Modded)" />
+  </ItemGroup>
 </Project>

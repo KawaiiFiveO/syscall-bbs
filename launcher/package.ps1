@@ -40,6 +40,7 @@ Add-Mod "SkipLoading" "mods"
 Add-Mod "HookLogger" "optional-mods"
 Add-Mod "FoodCourtTools" "optional-mods"
 Add-Mod "YomielPlayer" "optional-mods"
+Add-Mod "TrackerPlayer" "optional-mods"
 
 Build "$repo\tools\fctext\fctext.csproj"
 $fctext = Join-Path $stage "tools\fctext\bin\Release\net472"
@@ -71,6 +72,9 @@ Set-Content (Join-Path $stage "THIRD-PARTY-NOTICES.txt") $notices -Encoding UTF8
 # Releases never contain story files.
 $stories = @(Get-ChildItem $stage -Recurse -File -Include *.z1, *.z2, *.z3, *.z4, *.z5, *.z6, *.z7, *.z8, *.zblorb, *.zlb)
 if ($stories) { throw "Story files found in the release: $($stories.FullName -join ', ')" }
+# Or modules.
+$modules = @(Get-ChildItem $stage -Recurse -File -Include *.mod, *.m15, *.stk, *.nst)
+if ($modules) { throw "Module files found in the release: $($modules.FullName -join ', ')" }
 
 $zip = Join-Path $dist "$name.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }

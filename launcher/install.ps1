@@ -35,7 +35,7 @@ if ($Uninstall -or ((Test-Installed $GameDir) -and -not $Mods -and -not $dropped
 }
 
 # The mods offered, in menu order. True means picked by default.
-$bundled = [ordered]@{ SkipLoading = $true; HookLogger = $false; FoodCourtTools = $false; YomielPlayer = $false }
+$bundled = [ordered]@{ SkipLoading = $true; HookLogger = $false; FoodCourtTools = $false; YomielPlayer = $false; TrackerPlayer = $false }
 $entries = @()
 foreach ($name in $bundled.Keys) { $entries += Get-ModEntry (Join-Path $PSScriptRoot "..\mods\$name") $bundled[$name] }
 $entries += $dropped.Mods | ForEach-Object { Get-ModEntry $_ $true }

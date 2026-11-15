@@ -236,7 +236,7 @@ Colors are `TextColor`, created with `TextColor.FromRgb(0xRRGGBB)` or `new TextC
 | `Bold` | The desktop font as the terminal draws it (`system_bold`). Default. |
 | `Regular` | The desktop font's thinner face (`system_regular`). |
 | `Mono` | The game's monospaced font (`font_cpmono`): thin, ASCII only. Accented letters lose their accents; other characters are drawn from `Cga`. |
-| `Cga` | The game's IBM PC font (`font_cga`): 8×8, code page 437, with accented letters and box drawing. Characters outside code page 437 show as `?`. |
+| `Cga` | The game's IBM PC font (`font_cga`): 8×8, all of code page 437, including accented letters, box drawing and symbols such as `►`, `▲` and `♪`. Characters outside code page 437 show as `?`. |
 
 `Bold` and `Regular` are proportional, with each glyph centered in its cell. They lack symbols and accented letters; those characters are drawn from `Mono` instead, then `Cga`. Characters with no fallback show as `?`.
 
@@ -261,6 +261,36 @@ Typed characters come before other keys in the same frame.
 
 `window.DataDirectory` and `context.Programs.DataDirectory` are the mod's folder for saved files, `My Games/Last Call BBS/<user>/mods/<id>`. The folder is created on first use. It is available once the game is running, not in `OnLoad`.
 
+### Mouse
+
+A program that also implements `IProgramMouse` gets mouse clicks and the wheel over its grid while its window is on top, before that frame's keys:
+
+```csharp
+public void MouseClicked(ProgramWindow window, MouseClick click)
+{
+    if (click.Row == 0 && click.Button == MouseButton.Left)
+        _lines.Clear();
+}
+
+public void MouseWheel(ProgramWindow window, int column, int row, int notches) => _top -= notches;
+```
+
+* `MouseClick` has `Column`, `Row`, and `Button` (`Left`, `Right`, or `Middle`). A click is a button going down over the grid. The press that picks a menu item or brings the window to the top is not a click.
+* `notches` is positive when the wheel turns away from the user.
+* `window.MouseColumn` and `window.MouseRow` are the cell under the mouse, or -1 when the mouse is outside the grid or another window is on top. Every program has them.
+
+### Game music
+
+`window.GameMusic` sets the game's music while the window is open, including behind other windows or minimized:
+
+| Value | Game's music |
+|---|---|
+| `Playing` | Plays as usual. Default. |
+| `MutedOnDesktop` | Silent on the desktop; full-screen games keep theirs. |
+| `Muted` | Silent everywhere. |
+
+With several windows open, the highest muting value applies.
+
 ## Sounds
 
 `context.Sounds.PlayGameSound(name, volume)` plays one of the game's sound effects. Every mod can use it. Call it on the game's main thread (program callbacks and hooks) once the game is running, not in `OnLoad`.
@@ -284,6 +314,36 @@ Sounds that suit programs:
 | `desktop/win_open`, `win_close`, `win_minimize`, `win_unminimize` | Window chrome | 0.6 s |
 | `desktop/menu_open`, `menu_close` | Menu panel | 0.6 s |
 | `terminal/dial_bbs`, `terminal/download` | Modem | |
+
+### Generated audio
+
+`context.Sounds.Play(source, volume)` mixes audio from an `IAudioSource` into the game's output at the music volume. Call it on the game's main thread once the game is running. It returns an `AudioStream`, or `null` if streams don't work on the game's build; the first failure is logged. A source that plays a 440 Hz tone:
+
+```csharp
+class Tone : IAudioSource
+{
+    private double phase;
+
+    public int Read(float[] buffer, int frames)
+    {
+        for (int i = 0; i < frames; i++)
+        {
+            float sample = (float)Math.Sin(phase) * 0.3f;
+            buffer[i * 2] = sample;     // left
+            buffer[i * 2 + 1] = sample; // right
+            phase += 2 * Math.PI * 440 / ModSounds.SampleRate;
+        }
+        return frames;
+    }
+}
+
+AudioStream stream = context.Sounds.Play(new Tone());
+```
+
+* `Read` fills interleaved stereo frames at `ModSounds.SampleRate` (48000 Hz), from -1 to 1, and returns the frames written. Fewer frames than asked ends the stream.
+* `Read` runs on the game's audio thread about every 40 ms. Keep it short and don't touch the game from it.
+* An exception in `Read` ends the stream and is logged.
+* `AudioStream` has `Volume` (0 to 1), `IsPlaying`, `Stop()`, and `FramesPlayed`. The audio heard lags `FramesPlayed` by about `ModSounds.BufferFrames` (2048 frames).
 
 ## Patching the game
 

@@ -2,8 +2,9 @@
 
 The pages are the ones in `nav` in zensical.toml. They are copied unchanged into stage/
 at their repo paths, so their .md links resolve the same way on GitHub, in the release
-zip and on the site. Two things GitHub does are done here: links to repo files that
-aren't pages go to GitHub, and a line that is only a user-attachments URL becomes a video.
+zip and on the site. Images they show are copied alongside. Two things GitHub does are
+done here: links to repo files that aren't pages go to GitHub, and a line that is only a
+user-attachments URL becomes a video.
 
 | Command | Output | URLs |
 |---|---|---|
@@ -62,15 +63,24 @@ def check_pages(pages):
 
 
 LINK = re.compile(r"\]\(([^)\s#:]+)(#[^)\s]*)?\)")
+IMAGE = re.compile(r"!\[[^\]]*\]\(([^)\s#:]+)\)")
+
+
+def images(rel, text):
+    """Repo paths of the images a page shows."""
+    base = PurePosixPath(rel).parent
+    return [posixpath.normpath(str(base / m.group(1))) for m in IMAGE.finditer(text)]
 
 
 def offsite_links(rel, text, pages):
     """Points links to repo files that aren't pages at GitHub."""
     base = PurePosixPath(rel).parent
 
+    shown = set(images(rel, text))
+
     def fix(m):
         target = posixpath.normpath(str(base / m.group(1)))
-        if target in pages or target.startswith(".."):
+        if target in pages or target in shown or target.startswith(".."):
             return m.group(0)
         return f"]({GITHUB}{target}{m.group(2) or ''})"
 
@@ -91,6 +101,9 @@ def stage(pages):
         dst.parent.mkdir(parents=True, exist_ok=True)
         text = (REPO / rel).read_bytes().decode("utf-8")
         dst.write_bytes(videos(offsite_links(rel, text, pages)).encode("utf-8"))
+        for image in images(rel, text):
+            (STAGE / image).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(REPO / image, STAGE / image)
     shutil.copytree(HERE / "theme", STAGE / "_theme")
 
 

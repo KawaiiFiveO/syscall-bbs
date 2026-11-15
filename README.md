@@ -65,6 +65,10 @@ AllowUnscoped.<id> = true
 
 A desktop program that plays Z-machine interactive fiction. See [mods/YomielPlayer/README.md](mods/YomielPlayer/README.md).
 
+### Muzakal
+
+A desktop program that plays Protracker modules. See [mods/TrackerPlayer/README.md](mods/TrackerPlayer/README.md).
+
 ### FoodCourtTools
 
 Runs 20th Century Food Court solutions on request, edits them as text in the running game, and adds multiple playback speeds. See [mods/FoodCourtTools/README.md](mods/FoodCourtTools/README.md).

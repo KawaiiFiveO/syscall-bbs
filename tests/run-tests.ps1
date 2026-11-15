@@ -136,6 +136,9 @@ function Test-Build([string]$gameDir) {
     Check ($log -match "Textures: OK").Count "texture loading finds its game code"
     Check ($log -match "Programs: OK").Count "desktop programs find their game code"
     Check ($log -match "Sounds: OK").Count "sounds find their game code"
+    Check ($log -match "Sound streams: OK").Count "sound streams find their game code"
+    Check ($log -match "Program mouse: OK").Count "program windows find the mouse"
+    Check ($log -match "Game music: OK").Count "programs can silence the game's music"
     Check ($log -match "Loaded Skip Loading").Count "SkipLoading loads"
     Check ($log -match "Instant downloads: applied").Count "download patch applies"
     Check ($log -match "No download cooldown: applied").Count "cooldown patch applies"
@@ -157,7 +160,7 @@ function Test-Build([string]$gameDir) {
     foreach ($case in $all) { Add-Mod $case $modsDir $sandbox $helperDll }
 
     # The examples aren't installed by default, but must keep working.
-    foreach ($name in @("FoodCourtStats", "Typewriter", "YomielPlayer")) {
+    foreach ($name in @("FoodCourtStats", "Typewriter", "YomielPlayer", "TrackerPlayer")) {
         $example = Join-Path $repo "mods\$name"
         & dotnet build (Join-Path $example "$name.csproj") -c Release -v q | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "Could not build the example mod $name" }
@@ -199,6 +202,7 @@ function Test-Build([string]$gameDir) {
     Check ($log -match "Loaded Food Court Stats").Count "example mod passes its scope check"
     Check ($log -match "Loaded Typewriter").Count "example program loads"
     Check ($log -match "Loaded Yomiel ").Count "Yomiel loads with its interpreter DLL and passes the scope check"
+    Check ($log -match "\(onehalf\.trackerplayer\)").Count "the module player loads with its Tracker DLL and passes the scope check"
     $loadedAt = { param($id) ($log | Select-String -Pattern "\] Loaded .*\(test\.$id\)" | Select-Object -First 1).LineNumber }
     Check ((& $loadedAt "zz_required") -lt (& $loadedAt "aa_requires_later")) "a required mod loads first"
     Check ((& $loadedAt "zz_required") -lt (& $loadedAt "ab_after_later")) "an 'after' mod loads later"

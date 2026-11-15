@@ -12,6 +12,7 @@ nav = [
   { "Main menu" = "README.md" },
   { "Mods" = [
     { "Yomiel" = "mods/YomielPlayer/README.md" },
+    { "Muzakal" = "mods/TrackerPlayer/README.md" },
     { "FoodCourtTools" = "mods/FoodCourtTools/README.md" },
   ] },
   { "Files" = [

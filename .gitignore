@@ -11,3 +11,5 @@ website/site/
 website/public/
 website/stage/
 website/.publish.toml
+# Test modules aren't redistributed. Put them here or set TRACKER_MODULES.
+tracker/modules/

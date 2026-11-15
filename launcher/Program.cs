@@ -83,6 +83,7 @@ internal static class Program
             failures.AddRange(RuntimeTextures.Verify());
             failures.AddRange(DesktopPrograms.Verify());
             failures.AddRange(GameSounds.Verify());
+            failures.AddRange(SoundStreams.Verify());
             Log.Info(failures.Count == 0 ? "Verify: all mods and hooks are working." : "Verify: some mods or hooks failed.");
             Log.Close();
             return failures.Count == 0 ? 0 : 2;

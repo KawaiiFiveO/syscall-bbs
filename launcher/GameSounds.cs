@@ -65,6 +65,15 @@ internal static class GameSounds
         }
     }
 
+    /// <summary>Audio's full play call. Throws if it couldn't be found.</summary>
+    internal static MethodInfo PlayCall()
+    {
+        Resolve();
+        return _play;
+    }
+
+    internal static object InvokeStatic(MethodInfo method, params object[] args) => Invoke(method, args);
+
     private static object Invoke(MethodInfo method, params object[] args)
     {
         try
@@ -107,5 +116,7 @@ internal static class GameSounds
                 Loaded[full] = sound = Invoke(_load, full);
             Invoke(_play, sound, false, 0f, 0f, false, volume, 0.0);
         }
+
+        public IStreamControl Stream(IAudioSource source, float volume, IModLog log) => SoundStreams.Start(source, volume, log);
     }
 }

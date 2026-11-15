@@ -44,6 +44,38 @@ public interface IProgramMenu
     IReadOnlyList<ProgramMenuItem> MenuItems { get; }
 }
 
+/// <summary>
+/// Optional, for an <see cref="IDesktopProgram"/>: mouse clicks and the wheel over the window's
+/// grid. Only the top window gets them, before that frame's keys.
+/// </summary>
+public interface IProgramMouse
+{
+    /// <summary>A button was pressed over a cell.</summary>
+    void MouseClicked(ProgramWindow window, MouseClick click);
+
+    /// <summary>The wheel turned over a cell: positive notches away from the user (up), negative towards.</summary>
+    void MouseWheel(ProgramWindow window, int column, int row, int notches);
+}
+
+public enum MouseButton { Left, Right, Middle }
+
+/// <summary>A mouse button pressed over a cell of the grid.</summary>
+public readonly struct MouseClick
+{
+    public MouseClick(int column, int row, MouseButton button)
+    {
+        Column = column;
+        Row = row;
+        Button = button;
+    }
+
+    public int Column { get; }
+    public int Row { get; }
+    public MouseButton Button { get; }
+
+    public override string ToString() => $"{Button} at {Column},{Row}";
+}
+
 /// <summary>An item in a program's menu, or a separator.</summary>
 public sealed class ProgramMenuItem
 {
@@ -138,6 +170,28 @@ public sealed class ProgramWindow
 
     /// <summary>Same as <see cref="ModPrograms.DataDirectory"/>.</summary>
     public string DataDirectory => _programs.DataDirectory;
+
+    /// <summary>The cell under the mouse, or -1 when the mouse is elsewhere or another window is on top. Updated every frame.</summary>
+    public int MouseColumn { get; internal set; } = -1;
+
+    /// <summary>See <see cref="MouseColumn"/>.</summary>
+    public int MouseRow { get; internal set; } = -1;
+
+    /// <summary>The game's music while the window is open, even behind other windows or minimized.</summary>
+    public GameMusic GameMusic { get; set; }
+}
+
+/// <summary>What happens to the game's music while a program window is open.</summary>
+public enum GameMusic
+{
+    /// <summary>The game's music plays as usual.</summary>
+    Playing,
+
+    /// <summary>The desktop's music is silent; full-screen games keep theirs.</summary>
+    MutedOnDesktop,
+
+    /// <summary>All of the game's music is silent, full-screen games included.</summary>
+    Muted,
 }
 
 /// <summary>
@@ -277,7 +331,7 @@ public enum TextFont
     /// <summary>The game's monospaced font (font_cpmono): thin, ASCII only. Other characters lose their accents or show as '?'.</summary>
     Mono,
 
-    /// <summary>The game's IBM PC font (font_cga): 8x8, code page 437, with accented letters and box drawing.</summary>
+    /// <summary>The game's IBM PC font (font_cga): 8x8, all of code page 437, including accented letters, box drawing and symbols such as ► and ♪.</summary>
     Cga,
 }
 
