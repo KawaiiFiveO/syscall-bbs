@@ -45,7 +45,7 @@ Build "$repo\tools\fctext\fctext.csproj"
 $fctext = Join-Path $stage "tools\fctext\bin\Release\net472"
 New-Item -ItemType Directory -Force $fctext | Out-Null
 Copy-Item "$repo\tools\fctext\bin\Release\net472\fctext.exe", "$repo\tools\fctext\bin\Release\net472\fctext.exe.config" $fctext
-Copy-Item "$repo\tools\fcrun.ps1" (Join-Path $stage "tools")
+Copy-Item "$repo\tools\fcrun.ps1", "$repo\tools\fcedit.ps1" (Join-Path $stage "tools")
 
 Build "$repo\tools\textool\textool.csproj"
 $textool = Join-Path $stage "tools\textool\bin\Release\net472"

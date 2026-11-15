@@ -2,7 +2,7 @@
 
 A mod that runs 20th Century Food Court solutions in the game on request and reports the result. It also applies solution edits to the running game.
 
-Pick Food Court Tools in `Install.cmd`. The game must be running through `Last Call BBS (Modded).exe` for every tool on this page. `fctext` and the solution text format are described in [Food Court solution format](../../docs/food-court-format.md).
+To install, select Food Court Tools in `Install.cmd`. To use tools, the game must be running through `Last Call BBS (Modded).exe`. `fctext` and solution text format are described in [Food Court solution format](../../docs/food-court-format.md).
 
 ## Running a solution
 
@@ -16,8 +16,8 @@ tools/fcrun.ps1 <file.solution or text file> [-TimeoutSeconds 30]
 | Exit code | Meaning |
 |---|---|
 | `0` | Status is `ok`. |
-| `1` | Any other status, a timeout or an error. |
-| `2` | The text file failed to import. |
+| `1` | Any other status, timeout, or error. |
+| `2` | Text file failed to import. |
 
 Without `fcrun.ps1`: copy a `.solution` file into `mods/FoodCourtTools/requests/`. The result is written to `mods/FoodCourtTools/results/<name>.json`.
 
@@ -30,7 +30,7 @@ Without `fcrun.ps1`: copy a `.solution` file into `mods/FoodCourtTools/requests/
 | `name` | Solution name. |
 | `status` | `ok`, `error` (the game reported an error), `timeout` or `failed` (the run couldn't start). |
 | `error` | The game's message, or `null`. |
-| `ticks` | Score: the slowest order's tick count minus one. `null` unless `ok`. |
+| `ticks` | Score: slowest order's tick count minus one. `null` unless `ok`. |
 | `cost` | Cost computed from the module catalogue. |
 | `savedSolved`, `savedTicks`, `savedCost` | Values stored in the solution file. |
 | `orderTicks` | Tick count of each completed order. |
@@ -58,17 +58,15 @@ tools/fcedit.ps1 my-build.fcn -Run        # also run each applied version and pr
 ```
 
 * A solution is exported to `mods/FoodCourtTools/text/` and opened in an editor. A text or netlist file is opened as is.
-* Each save is checked. Problems are printed with line numbers and nothing is applied. A valid file replaces the solution in the game.
-* A netlist (`.fcn`, see [Food Court netlist language](../../docs/food-court-netlist.md)) is compiled on every save, and its cost report is printed: floor and logic cost, functions, buffers added and what the optimiser saved. `-Strict` and `-NoOptimise` pass `--strict` and `-O0` to the compiler.
-* `-Run` runs each applied version in the game and prints its score, such as `Score: 10T 75k 37S 28W`. S is the sum over orders of each order's ticks minus one; W is the number of wires.
-* A change made in the game rewrites a text file that has no unapplied edits. A netlist is never rewritten, because that would lose its names: the game's version is written next to it as `<name>.game.fcn`.
+* Each save is checked. Only a valid file can replace the solution in the game.
+* A netlist (`.fcn`, see [Food Court netlist language](../../docs/food-court-netlist.md)) is compiled on every save, and its cost report is printed. `-Strict` and `-NoOptimise` pass `--strict` and `-O0` to the compiler.
+* `-Run` runs each applied version in the game and prints the score, such as `Score: 10T 75k 37S 28W`. S is the sum over orders of each order's ticks minus one; W is number of wires.
+* A change made in the game rewrites a text file that has no unapplied edits. The netlist is not rewritten; the game's version is written next to it as `<name>.game.fcn`.
 * If no solution has the text file's name, a new solution is created.
 * If the puzzle is running, the edit waits until it stops.
 * Each edit is one undo step. **Ctrl+Z** in the puzzle screen reverts it.
-* `-Editor <command>` sets the editor. The default is `$env:EDITOR`, then VS Code, then Notepad. `-NoEditor` opens none.
+* `-Editor <command>` sets the editor. Default is `$env:EDITOR`, then VS Code, then Notepad. `-NoEditor` opens none.
 * With `-Once`, exit code 0 means the edit was applied or is waiting for the puzzle screen.
-
-`fcedit.ps1` is only in the source repository.
 
 ## Level documents
 
@@ -76,30 +74,30 @@ On every game start, each level's requirements are written to `mods/FoodCourtToo
 
 ## Waveforms
 
-Each order of a run is written as a VCD file, `results/<name>.order<N>.vcd`, viewable in GTKWave or another VCD viewer.
+Each order of a run can be written as a VCD file, `results/<name>.order<N>.vcd`, viewable in GTKWave or any VCD viewer.
 
 * Each module is a scope. Each output socket is a 1-bit wire.
 * Tick 0 holds the scanner's opening pulse.
 
-To turn waveforms off, create `mods/FoodCourtTools/config.ini` containing:
+To enable waveforms, edit `mods/FoodCourtTools/config.ini`:
 
 ```ini
-Waveforms = false
+Waveforms = true
 ```
 
 ## Playback speeds
 
-The play/fast button (**Q**) has extra speeds between play and fast-forward. While fast-forwarding, each press moves to the next speed. The button is disabled at the top speed, which is the game's own fast-forward.
+The play/fast button (**Q**) now has extra speed steps. While fast-forwarding, each press moves to the next speed.
 
 | Speed | Ticks per second |
 |---|---|
 | Play | 1.5 |
 | Added speeds (default) | 3, 6, 12 |
-| Fast-forward | 20 |
+| Fastest | 20 |
 
 To slow down, press step (**W**), then **Q** to play again.
 
-Set the added speeds in `mods/FoodCourtTools/config.ini`, in ticks per second. Values outside 1.5–20 are ignored. An empty value turns the extra speeds off.
+Set the added speeds in `mods/FoodCourtTools/config.ini`, in ticks per second. Values outside 1.5–20 are ignored.
 
 ```ini
 PlaybackSpeeds = 3, 6, 12
