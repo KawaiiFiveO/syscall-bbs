@@ -14,7 +14,7 @@ namespace LastCallBBS.Mods.WireColors;
 
 /// <summary>
 /// Keys on the puzzle screen. Middle-click and the number keys color the hovered wire; F5 exports
-/// the open solution without colors. The game's input calls ignore the puzzle screen while another
+/// the open solution without colors; C toggles the cost display's wire count. The game's input calls ignore the puzzle screen while another
 /// screen is on top, and wires are only drawn hovered while the solution is stopped and nothing is
 /// held, so colors change only when the game would accept an edit.
 /// </summary>
@@ -25,7 +25,7 @@ internal static class PuzzleInput
     private static Func<int, bool> _keyPressed;
     private static Func<bool> _middleHeld;
     private static int[] _colorKeys, _keypadKeys;
-    private static int _exportKey;
+    private static int _exportKey, _wireCountKey;
     private static MethodInfo _changed, _commit, _screenSolution, _writeSolution, _fileName;
     private static FieldInfo _gameInstance, _manager, _writerBytes;
     private static Func<string> _exportFolder;
@@ -71,6 +71,7 @@ internal static class PuzzleInput
         _colorKeys = Enumerable.Range(0, 10).Select(n => KeyValue("NR_" + n)).ToArray();
         _keypadKeys = Enumerable.Range(0, 10).Select(n => KeyValue("KP_" + n)).ToArray();
         _exportKey = KeyValue("F5");
+        _wireCountKey = KeyValue("c");
 
         // The held check for a mouse button: the only (button) method reading the held set once.
         Type button = CodeShape.Single(game.GetTypes().Where(t => t.IsEnum && new[] { "Left", "Middle", "Right", "Back" }.All(n => Enum.IsDefined(t, n))), "mouse button enum");
@@ -121,6 +122,8 @@ internal static class PuzzleInput
         {
             if (_keyPressed(_exportKey))
                 Export(__instance);
+            if (_keyPressed(_wireCountKey))
+                CostDisplay.Toggle();
             bool middle = _middleHeld();
             bool clicked = middle && !_middleWasHeld;
             _middleWasHeld = middle;

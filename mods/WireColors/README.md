@@ -29,6 +29,10 @@ Number keys on the keypad do the same.
 
 Each change is one undo step. A wire keeps color when its ends are moved. Plugs stay orange.
 
+## Wire count
+
+To show the number of wires on the Cost display, press **C** on the puzzle screen. Press **C** again to cycle back. Recorded GIFs still show cost.
+
 ## Solution files
 
 Colors travel with the solution file, including copies made with Copy Solution. Without the mod, orange wires are shown; saving there removes the colors.

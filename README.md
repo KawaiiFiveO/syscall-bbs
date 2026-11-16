@@ -13,7 +13,7 @@ https://github.com/user-attachments/assets/56f08b51-0a20-489b-b9f9-bf7041386f72
 
 ## Installation
 
-1. Extract the release zip (named `SysCallBBS-v1.x.x`). ([**Download latest**](https://github.com/KawaiiFiveO/syscall-bbs/releases/latest))
+1. Extract the release zip (named `SysCallBBS-1.x.x`). ([**Download latest**](https://github.com/KawaiiFiveO/syscall-bbs/releases/latest))
 2. Run `Install.cmd`, or drop the game's folder on it.
 3. Choose the mods to install.
 4. Start the game with `Last Call BBS (Modded).exe` in the game folder.
